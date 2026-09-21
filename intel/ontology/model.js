@@ -1,6 +1,6 @@
 const { isIP } = require('node:net');
 
-const OBJECT_TYPES = ['aircraft', 'vessel', 'company', 'person', 'country', 'ip', 'location', 'organization', 'event', 'observation', 'infrastructure', 'domain', 'satellite', 'airport', 'port'];
+const OBJECT_TYPES = ['aircraft', 'vessel', 'company', 'person', 'country', 'ip', 'location', 'organization', 'event', 'observation', 'infrastructure', 'domain', 'satellite', 'airport', 'port', 'camera'];
 const LINK_TYPES = ['OPERATED_BY', 'OWNED_BY', 'REGISTERED_IN', 'HEADQUARTERED_IN', 'CEO', 'PARENT_ORG', 'EMPLOYED_BY', 'NATIONALITY', 'MEMBER_OF', 'LOCATED_IN', 'OBSERVED_AT', 'ASSOCIATED_WITH', 'SANCTIONS_MATCH', 'ANNOUNCED_BY', 'HOSTED_BY', 'AFFECTS'];
 class InputError extends Error { constructor(message, status = 400) { super(message); this.status = status; } }
 function check(ok, message) { if (!ok) throw new InputError(message); }
@@ -22,6 +22,9 @@ function identifier(namespace, raw) {
   if (namespace === 'wikidata') { value = value.toUpperCase(); check(/^Q[1-9][0-9]*$/.test(value), 'Invalid Wikidata QID'); }
   if (namespace === 'imo') { value = value.replace(/^IMO\s*/i, ''); check(/^\d{7}$/.test(value), 'Invalid IMO'); }
   if (namespace === 'mmsi') check(/^\d{9}$/.test(value), 'Invalid MMSI');
+  if (namespace === 'norad') { check(/^\d{1,9}$/.test(value)&&Number(value)>0,'Invalid NORAD ID'); value=String(Number(value)); }
+  if (namespace === 'icao_airport') { value=value.toUpperCase();check(/^[A-Z0-9]{4}$/.test(value),'Invalid airport ICAO'); }
+  if (namespace === 'iata') { value=value.toUpperCase();check(/^[A-Z]{3}$/.test(value),'Invalid airport IATA'); }
   if (namespace === 'asn') { value = value.toUpperCase().replace(/^AS/, ''); check(/^\d+$/.test(value) && Number(value) > 0 && Number(value) <= 4294967295, 'Invalid ASN'); value = `AS${Number(value)}`; }
   if (namespace === 'ip') { check(isIP(value) !== 0, 'Invalid IP'); value = isIP(value) === 6 ? new URL(`http://[${value}]`).hostname.slice(1, -1) : value; }
   if (namespace === 'iso3166') { value = value.toUpperCase(); check(/^[A-Z]{2}$/.test(value), 'Invalid country code'); }

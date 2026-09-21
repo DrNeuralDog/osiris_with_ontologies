@@ -69,12 +69,13 @@ async function boot() {
   setSourceObserver((host,sample)=>worker.health.record(`ontology:${host}`,sample).catch(e=>console.warn('[health]',e.message)));
   const server = createApp(store).listen(process.env.INTEL_PORT || 4000, '0.0.0.0', () => console.log('[INTEL] Persistent ontology ready'));
   if(process.env.INTELLIGENCE_WORKER!=='0')await worker.start();
+  else await store.pool.query("INSERT INTO intelligence_worker_state(id,enabled) VALUES('main',false) ON CONFLICT(id) DO UPDATE SET enabled=false,heartbeat_at=now()");
   void legacy.loadSanctions();
   // Retry a failed initial download without waiting a whole day; keep fresh indexes for 24h.
   const refresh = setInterval(() => {
     if (Date.now() - legacy.getStats().sanctions_loaded_at >= 24 * 60 * 60 * 1000) void legacy.loadSanctions();
   }, 30 * 60 * 1000);
-  for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => { clearInterval(refresh);worker.stop(); server.close(() => store.pool.end().then(() => process.exit(0))); });
+  for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, async () => { clearInterval(refresh);await worker.stop(); server.close(() => store.pool.end().then(() => process.exit(0))); });
 }
 if (require.main === module) boot().catch(error => { console.error('[INTEL] Startup failed:', error.message); process.exit(1); });
 module.exports = { createApp };

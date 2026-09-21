@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 const uuid = '[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}';
 export async function proxyIntelligence(req: Request, context: { params: Promise<{ path: string[] }> }) {
   const route = (await context.params).path.join('/');
-  const allowed = req.method === 'GET' ? new RegExp(`^(policies|sources|sources/[a-zA-Z0-9:._-]{1,160}/samples|correlations|correlations/${uuid})$`).test(route) : req.method === 'POST' && new RegExp(`^correlations/${uuid}/dismiss$`).test(route);
+  const allowed = req.method === 'GET' ? new RegExp(`^(summary|objects/${uuid}/context|policies|sources|sources/[a-zA-Z0-9:._-]{1,160}/samples|correlations|correlations/${uuid})$`).test(route) : req.method === 'POST' && new RegExp(`^correlations/${uuid}/dismiss$`).test(route);
   if (!allowed) return NextResponse.json({ error: 'Unknown intelligence endpoint' }, { status: 404 });
   if (isRateLimited(`intelligence:${getClientIp(req)}`, 90, 60000)) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   if (req.method === 'POST') {

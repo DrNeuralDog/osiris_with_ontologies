@@ -17,11 +17,12 @@ export interface OntologyLink {
 }
 export interface OntologyGraph { root_id: string; nodes: OntologyObject[]; links: OntologyLink[]; truncated: boolean; warnings?: string[]; aliases?: Record<string, string> }
 export interface InvestigationSeed {
+  record?: Record<string, unknown>;
   type: string; id: string; name?: string; icao24?: string; registration?: string;
   callsign?: string; model?: string; imo?: string; mmsi?: string; wikidata?: string;
   iso3166?: string; provider?: string; source_id?: string;
 }
-export const OBJECT_COLORS: Record<string, string> = { aircraft: '#00E5FF', vessel: '#4FC3F7', company: '#D4AF37', person: '#CE93D8', country: '#81C784', ip: '#FF8A65', location: '#AED581', organization: '#FFD54F', event: '#F06292', infrastructure: '#90A4AE', observation: '#FFFFFF' };
+export const OBJECT_COLORS: Record<string, string> = { aircraft: '#00E5FF', vessel: '#4FC3F7', company: '#D4AF37', person: '#CE93D8', country: '#81C784', ip: '#FF8A65', location: '#AED581', organization: '#FFD54F', event: '#F06292', infrastructure: '#90A4AE', observation: '#FFFFFF', camera: '#FBBF24', satellite: '#A78BFA', airport: '#38BDF8', port: '#2DD4BF' };
 export function mergeGraph(current: OntologyGraph, incoming: OntologyGraph): OntologyGraph {
   const aliases = { ...current.aliases, ...incoming.aliases };
   const canonical = (id: string) => { const seen = new Set<string>(); while (aliases[id] && !seen.has(id)) { seen.add(id); id = aliases[id]; } return id; };

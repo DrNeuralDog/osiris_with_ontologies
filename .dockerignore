@@ -1,8 +1,14 @@
 # Dependencies & build output (rebuilt inside image)
 node_modules
+**/node_modules
 .next
 out
 build
+
+# Local runtime snapshots are not source catalogs
+.cache
+off
+off.*.tmp
 
 # Local env / secrets
 .env

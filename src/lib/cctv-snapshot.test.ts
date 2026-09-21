@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { gunzipSync } from 'node:zlib';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildPayload, clearPayload, getPayload, readSnapshot, writeSnapshot } from './cctv-snapshot';
+import { buildPayload, clearPayload, getPayload, readSnapshot, writeSnapshot, lookupCachedCamera } from './cctv-snapshot';
 
 let directory: string;
 
@@ -19,6 +19,17 @@ afterEach(async () => {
 });
 
 describe('camera catalogue snapshot', () => {
+  it('off disables writes instead of producing a file named off', async () => {
+    process.env.OSIRIS_CCTV_SNAPSHOT='off';
+    await writeSnapshot({uk:[{id:'disabled-write'}]});
+    await expect(access('off')).rejects.toThrow();
+  });
+  it('indexes already built camera records without any provider lookup', async () => {
+    buildPayload({cameras:[{id:'cached-camera-test',name:'Known'}]},1,true);
+    expect(await lookupCachedCamera('cached-camera-test')).toEqual({id:'cached-camera-test',name:'Known'});
+    expect(await lookupCachedCamera('missing-camera-test')).toBeNull();
+    expect(await lookupCachedCamera('x'.repeat(201))).toBeNull();
+  });
   it('round-trips a catalogue through disk, creating the directory', async () => {
     await writeSnapshot({ uk: [{ id: 'JamCams_1', source: 'TfL' }], japan: [{ id: 'jp-1' }] });
 

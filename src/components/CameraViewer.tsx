@@ -4,15 +4,19 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, RefreshCw, MapPin, Camera, CameraOff, Maximize2, PlayCircle } from 'lucide-react';
 import Hls from 'hls.js';
+import InvestigationActions from './InvestigationActions';
+import type { InvestigationSeed } from '@/lib/ontology';
+import type { InvestigationIntent } from '@/lib/investigation';
 import { isHostedOffPlatform, liveFeedAtSource, localEmbed, needsResolution, offPlatformView } from '@/lib/camera-feed';
 
 interface CameraViewerProps {
   camera: any | null;
   onClose: () => void;
   onLocate?: (lat: number, lng: number) => void;
+  onInvestigate?: (seed: InvestigationSeed, intent: InvestigationIntent) => void;
 }
 
-export default function CameraViewer({ camera, onClose, onLocate }: CameraViewerProps) {
+export default function CameraViewer({ camera, onClose, onLocate, onInvestigate }: CameraViewerProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -246,6 +250,7 @@ export default function CameraViewer({ camera, onClose, onLocate }: CameraViewer
               </div>
             </div>
 
+          {onInvestigate&&<InvestigationActions entity={{...camera,type:'camera'}} onInvestigate={onInvestigate}/>}
           <div className="px-3 py-2 flex flex-wrap items-center gap-2 text-[10px] font-mono border-b border-white/10"><button className="px-2 py-1 border border-[var(--gold-primary)]/40 rounded text-[var(--gold-primary)] disabled:opacity-40" onClick={() => void checkHealth()} disabled={!camera.id || healthCheck?.id === String(camera.id) && healthCheck.pending}>Check source health</button><span role="status" className="text-[var(--text-secondary)]">{healthCheck?.id === String(camera.id) ? healthCheck.text : 'Individual camera health: unknown until checked'}</span></div>
           {/* Camera Feed */}
           <div className={`relative bg-[#020202] ${fullscreen ? 'flex-1 overflow-hidden' : 'aspect-video max-h-[35vh] md:max-h-none'}`}>

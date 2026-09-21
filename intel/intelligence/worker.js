@@ -16,12 +16,13 @@ async function limitedJson(response,max=24*1024*1024){
 class IntelligenceWorker{
  constructor(store){this.store=store;this.health=new SourceHealth(store);this.ingest=new FeedIngestor(store);this.engine=new CorrelationEngine(store);this.history=new HistoryService(store);this.due=new Map();this.failures=new Map();this.running=false;this.frontendReady=false;this.lastPrune=0;this.lastWind=0;this.cursor=0;this.lastResult=null;}
  async start(){
+  await this.store.pool.query("INSERT INTO intelligence_worker_state(id,enabled) VALUES('main',true) ON CONFLICT(id) DO UPDATE SET enabled=true,heartbeat_at=now(),last_error=NULL");
   for(const [id,category,,endpoint] of FEEDS)await this.health.register({id:`feed:${id}`,name:`OSIRIS ${id} ${id==='catalog'?'reference catalog':'feed'}`,category,endpoint,scope:'service',policy:id==='cctv'?{live:1800,fresh:7200,historical:86400}:{}});
   await this.health.register({id:'weather:open-meteo',name:'Open-Meteo wind / visibility model',category:'weather',endpoint:'https://api.open-meteo.com/v1/forecast'});
   for(const [id] of FEEDS){const previous=await this.health.get(`feed:${id}`);this.failures.set(id,previous.consecutive_failures);if(previous.consecutive_failures&&previous.next_check_at)this.due.set(id,new Date(previous.next_check_at).getTime());}
   this.timer=setInterval(()=>void this.tick(),15000);this.timer.unref();void this.tick();
  }
- stop(){clearInterval(this.timer);}
+ stop(){clearInterval(this.timer);return this.store.pool.query("UPDATE intelligence_worker_state SET enabled=false,heartbeat_at=now() WHERE id='main'").catch(()=>{});}
  async poll(feed){
   const [id,,interval,path]=feed,start=Date.now();
   try{
@@ -41,6 +42,7 @@ class IntelligenceWorker{
    const dataAt=[...observed.map(r=>iso(r.observed_at)),...normalizeFeed(id,body).map(r=>r.observed_at)].filter(Boolean).sort().at(-1)||null;
    await this.health.record(`feed:${id}`,{ok:true,latency_ms:Date.now()-start,record_count:records,http_status:response.status,data_at:dataAt});
    this.failures.set(id,0);this.lastResult={source:id,imported,at:new Date().toISOString()};this.due.set(id,Date.now()+interval*1000);
+   if(imported>0)await this.store.pool.query("UPDATE intelligence_worker_state SET last_ingestion_at=now() WHERE id='main'");
   }catch(error){
    console.warn('[intelligence] feed',id,error.name,error.code||error.message);
    const failures=(this.failures.get(id)||0)+1;this.failures.set(id,failures);this.due.set(id,Date.now()+retryDelay(failures,Math.min(interval,120))*1000);
@@ -72,6 +74,7 @@ class IntelligenceWorker{
  async tick(){
   if(this.running)return;this.running=true;
   try{
+   await this.store.pool.query("UPDATE intelligence_worker_state SET heartbeat_at=now() WHERE id='main'");
    // Compose starts intel before Next. Waiting for process readiness is not an upstream failure.
    if(!this.frontendReady){try{const response=await fetch((process.env.OSIRIS_INTERNAL_URL||'http://osiris:3000')+'/api/health',{redirect:'error',signal:AbortSignal.timeout(2000)});await response.body?.cancel();if(!response.ok)return;this.frontendReady=true;}catch{return;}}
    // Rotate source order so a long-running flight request cannot starve later feeds.
@@ -80,8 +83,9 @@ class IntelligenceWorker{
    const results=await Promise.allSettled(due.map(f=>this.poll(f)));
    for(const r of results)if(r.status==='rejected')console.warn('[intelligence] health persistence:',r.reason?.message);
    await this.wind();await this.engine.run();
+   await this.store.pool.query("UPDATE intelligence_worker_state SET last_cycle_at=now(),heartbeat_at=now(),last_error=$1 WHERE id='main'",[results.some(r=>r.status==='rejected')?'INGESTION_FAILED':null]);
    if(Date.now()-this.lastPrune>3600000){await this.history.prune();this.lastPrune=Date.now();}
-  }catch(error){console.warn('[intelligence] worker:',error.message);}finally{this.running=false;}
+  }catch(error){console.warn('[intelligence] worker:',error.message);await this.store.pool.query("UPDATE intelligence_worker_state SET last_error='CYCLE_FAILED',heartbeat_at=now() WHERE id='main'").catch(()=>{});}finally{this.running=false;}
  }
 }
 module.exports={IntelligenceWorker,FEEDS,limitedJson};

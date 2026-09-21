@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { GET as catalog } from '@/app/api/cctv/route';
+import { lookupCachedCamera } from '@/lib/cctv-snapshot';
 import { getClientIp, isRateLimited, safeFetch } from '@/lib/ssrf-guard';
 export const dynamic = 'force-dynamic';
 interface Check { id: string; camera_id: string; status: string; checked_at: string; error: string | null; next_check_at: string }
@@ -21,10 +21,8 @@ export async function POST(req: Request) {
     const prior = await fetch(`${base}/intelligence/sources/${sourceId}`, { cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(5000) });
     if (prior.ok) { const saved = await prior.json(); if (saved.next_check_at && Date.parse(saved.next_check_at) > Date.now()) return NextResponse.json({ id: sourceId, camera_id: id, status: saved.status, checked_at: saved.last_checked_at, error: saved.last_error_category, next_check_at: saved.next_check_at, cached: true }); }
     else if (prior.status !== 404) return NextResponse.json({ error: 'Health storage unavailable; check postponed' }, { status: 502 });
-    const response = await catalog(new Request('http://osiris/api/cctv?region=all'));
-    const body = await response.json() as { cameras?: Record<string, unknown>[] };
-    const camera = body.cameras?.find(c => String(c.id) === id);
-    if (!camera) return NextResponse.json({ error: 'Camera not in current catalog' }, { status: 404 });
+    const camera = await lookupCachedCamera(id);
+    if (!camera) return NextResponse.json({ status: 'UNKNOWN', code: 'NOT_AVAILABLE', camera_id: id, error: 'Camera is not available in the local catalog yet. Load its region on the map first.' });
     if (!camera.feed_url || camera.stream_type && camera.stream_type !== 'jpg') return NextResponse.json({ status: 'UNKNOWN', camera_id: id, error: 'Only catalog snapshot cameras support server frame checks. Embedded video availability remains unknown.' });
     const target = new URL(String(camera.feed_url));
     if (target.username || target.password || !['http:', 'https:'].includes(target.protocol)) return NextResponse.json({ error: 'Unsupported catalog target' }, { status: 400 });

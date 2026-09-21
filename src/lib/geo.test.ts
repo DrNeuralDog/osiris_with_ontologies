@@ -174,10 +174,10 @@ describe('formatting', () => {
   it('switches units at sensible thresholds', () => {
     expect(formatDistance(0.42)).toBe('420 m');
     expect(formatDistance(4.2)).toBe('4.2 km');
-    expect(formatDistance(4200)).toMatch(/4,200 km/);
+    expect(formatDistance(4200).replace(/[,\s\u00a0\u202f]/g, '')).toBe('4200km');
     expect(formatArea(0.005)).toMatch(/m²/);
     expect(formatArea(12.5)).toBe('12.50 km²');
-    expect(formatArea(12345)).toMatch(/12,345 km²/);
+    expect(formatArea(12345).replace(/[,\s\u00a0\u202f]/g, '')).toBe('12345km²');
   });
 
   it('maps bearings to compass points', () => {

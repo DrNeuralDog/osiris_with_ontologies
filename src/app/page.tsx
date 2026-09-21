@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layers, BarChart3, Newspaper, Search, X, Globe, MapPinned, Route, Radar, Satellite, Moon, ExternalLink, AlertTriangle, Activity, Database, Wifi, Play, Network, Crosshair, Bluetooth, Pentagon, Radio , PenLine, ShoppingBag } from 'lucide-react';
+import { Layers, BarChart3, Newspaper, Search, X, Globe, MapPinned, Route, Radar, Satellite, Moon, ExternalLink, AlertTriangle, Activity, Database, Wifi, Play, Crosshair, Bluetooth, Pentagon, Radio , PenLine, ShoppingBag } from 'lucide-react';
 import { type TerrainStatus } from '@/lib/map-terrain';
 import { loadCameraCatalog, mergeCameraCatalog } from '@/lib/camera-catalog';
 import IntelFeed from '@/components/IntelFeed';
@@ -25,7 +25,9 @@ import GlobalStatusBar from '@/components/GlobalStatusBar';
 import LiveAlerts from '@/components/LiveAlerts';
 import WorldRemote from '@/components/WorldRemote';
 import ArcGISPanel from '@/components/ArcGISPanel';
-import { mapInvestigationSeed, type InvestigationSeed } from '@/lib/ontology';
+import { type InvestigationSeed } from '@/lib/ontology';
+import { mapEntitySeed, registerInvestigation, type InvestigationIntent, type InvestigationContext } from '@/lib/investigation';
+const IntelligenceCenter = dynamic(() => import('@/components/IntelligenceCenter'), { ssr: false });
 const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'), { ssr: false });
 const SourceHealthPanel = dynamic(() => import('@/components/SourceHealthPanel'), { ssr: false });
 const CorrelationsPanel = dynamic(() => import('@/components/CorrelationsPanel'), { ssr: false });
@@ -150,6 +152,10 @@ const newsTransform = (d: { news?: unknown[]; sources?: unknown[]; timestamp?: s
 
 export default function Dashboard() {
   const [graphOpen, setGraphOpen] = useState(false);
+  const [graphIntent, setGraphIntent] = useState<InvestigationIntent>('graph');
+  const [investigationContext, setInvestigationContext] = useState<InvestigationContext | null>(null);
+  const [registering, setRegistering] = useState(false), [investigationError, setInvestigationError] = useState('');
+  const registrationAbort = useRef<AbortController | null>(null);
   const [graphSeed, setGraphSeed] = useState<InvestigationSeed>();
   const [graphObjectId, setGraphObjectId] = useState<string>();
   const [intelPanel, setIntelPanel] = useState<'health' | 'correlations' | null>(null);
@@ -159,7 +165,7 @@ export default function Dashboard() {
   const [healthFilterError, setHealthFilterError] = useState('');
   const closeIntelPanel = useCallback(() => setIntelPanel(null), []);
   const closeGraph = useCallback(() => setGraphOpen(false), []);
-  const exploreEntity = useCallback((seed: InvestigationSeed) => { setGraphObjectId(undefined); setGraphSeed(seed); setGraphOpen(true); }, []);
+  const exploreEntity = useCallback((seed: InvestigationSeed) => { setGraphIntent('graph'); setGraphObjectId(undefined); setGraphSeed(seed); setGraphOpen(true); }, []);
   const dataRef = useRef<any>({});
   const [dataVersion, setDataVersion] = useState(0);
   const data = dataRef.current;
@@ -168,7 +174,7 @@ export default function Dashboard() {
   const [mapView, setMapView] = useState({ zoom: 2.5, latitude: 20 });
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number; lng: number; zoom?: number; alertId?: string; ts: number } | null>(null);
   const showInvestigation = useCallback((focus: InvestigationMapFocus) => { setInvestigation(focus); if (focus.objectId) { setGraphObjectId(focus.objectId); setGraphSeed(undefined); } setFlyToLocation({ lat: focus.lat, lng: focus.lng, zoom: focus.track ? 6 : 8, ts: Date.now() }); setGraphOpen(false); setIntelPanel(null); }, []);
-  const openIntelligenceObject = useCallback((id: string) => { setGraphSeed(undefined); setGraphObjectId(id); setGraphOpen(true); setIntelPanel(null); }, []);
+  const openIntelligenceObject = useCallback((id: string) => { setGraphIntent("graph"); setGraphSeed(undefined); setGraphObjectId(id); setGraphOpen(true); setIntelPanel(null); }, []);
   useEffect(() => {
     if (!healthyOnly) return;
     const controller = new AbortController();
@@ -531,18 +537,28 @@ export default function Dashboard() {
       if (res.ok) setRegionDossier(await res.json());
     } catch (e) { console.warn('[OSIRIS] Suppressed error:', e instanceof Error ? e.message : e); } finally { setDossierLoading(false); }
   }, []);
-  // Entity click handler (hoisted from JSX to comply with Rules of Hooks - Fixes #113)
-  const handleEntityClick = useCallback((entity: any) => {
-    const seed = mapInvestigationSeed(entity || {});
-    if (seed) { setGraphSeed(seed); setGraphOpen(true); }
+  const investigateSelection = useCallback(async (seed: InvestigationSeed, intent: InvestigationIntent) => {
+    registrationAbort.current?.abort(); const c=new AbortController(); registrationAbort.current=c;
+    setRegistering(true);setInvestigationError('');setIntelPanel(null);setGraphIntent(intent);
+    try {
+      if (seed.record) {
+        const context=await registerInvestigation(seed,c.signal);if(c.signal.aborted)return;
+        setInvestigationContext(context);setGraphObjectId(context.object.id);setGraphSeed(undefined);
+        if(intent==='graph'&&['aircraft','vessel','company','person','country','ip'].includes(seed.type)) { const resolverSeed={...seed};delete resolverSeed.record;setGraphObjectId(undefined);setGraphSeed(resolverSeed); }
+      } else { setGraphObjectId(undefined);setGraphSeed(seed); }
+      setGraphOpen(true);
+    } catch(e) {if(!c.signal.aborted)setInvestigationError(e instanceof Error?e.message:'Investigation unavailable');}
+    finally {if(!c.signal.aborted)setRegistering(false);}
+  },[]);
+  useEffect(()=>()=>registrationAbort.current?.abort(),[]);
+  const handleEntityClick = useCallback((entity: Record<string, unknown>) => {
+    if(entity.investigation_seed) {void investigateSelection(entity.investigation_seed as InvestigationSeed,(entity.investigation_intent||'graph') as InvestigationIntent);return;}
+    if(entity.investigation_intent) {const seed=mapEntitySeed(entity);if(seed)void investigateSelection(seed,entity.investigation_intent as InvestigationIntent);return;}
     if (entity?.type === 'cctv') setActiveCamera(entity);
-    if (entity?.type === 'live_news' && entity.url) {
-      setLiveFeedUrl(entity.url);
-      setLiveFeedName(entity.name);
-      setLiveFeedEmbedAllowed(entity.embed_allowed !== false);
+    if (entity?.type === 'live_news' && typeof entity.url==='string') {
+      setLiveFeedUrl(entity.url);setLiveFeedName(String(entity.name||''));setLiveFeedEmbedAllowed(entity.embed_allowed!==false);
     }
-  }, []);
-
+  },[investigateSelection]);
   // ── Drawing / AOI ──
   // OsirisMap already owns the draw interaction and the polygon rendering;
   // this only turns a finished ring into a measured, named, coloured record.
@@ -1900,20 +1916,22 @@ export default function Dashboard() {
       {/* ── Camera Viewer ── */}
       <CameraViewer
         camera={activeCamera}
+        onInvestigate={investigateSelection}
         onClose={() => setActiveCamera(null)}
         onLocate={(lat, lng) => setFlyToLocation({ lat, lng, ts: Date.now() })}
       />
 
+      <IntelligenceCenter context={investigationContext} busy={registering} error={investigationError}
+        onExplorer={()=>{setGraphIntent('graph');setGraphObjectId(undefined);setGraphSeed(undefined);setGraphOpen(true);}}
+        onHealth={()=>setIntelPanel('health')} onCorrelations={()=>setIntelPanel('correlations')}
+        onContext={intent=>{if(investigationContext){setGraphIntent(intent);setGraphSeed(undefined);setGraphObjectId(investigationContext.object.id);setGraphOpen(true);}}} />
       {/* ── Entity Graph Panel ── */}
       <div className="absolute left-4 bottom-24 z-[400] flex flex-col items-start gap-1 font-mono text-[10px]">
-        <button onClick={() => { setGraphObjectId(undefined); setGraphSeed(undefined); setGraphOpen(true); }} className="flex items-center gap-2 px-3 py-2 rounded border border-[var(--gold-primary)]/40 bg-[var(--bg-primary)] text-[var(--gold-primary)]" title="Search objects and investigate relationships"><Network size={14} /> ONTOLOGY</button>
-        <button className="px-3 py-2 rounded border border-[var(--gold-primary)]/40 bg-[var(--bg-primary)] text-[var(--gold-primary)]" onClick={() => setIntelPanel('health')}>SOURCE HEALTH</button>
-        <button className="px-3 py-2 rounded border border-[var(--gold-primary)]/40 bg-[var(--bg-primary)] text-[var(--gold-primary)]" onClick={() => setIntelPanel('correlations')}>CORRELATIONS</button>
         {healthyOnly && <button onClick={() => setHealthyOnly(false)} className="bg-[var(--bg-primary)] text-cyan-300 p-2">CCTV: Healthy only ({healthyCameraIds.size}) · clear</button>}
         {healthFilterError && healthyOnly && <span role="alert" className="max-w-64 bg-[var(--bg-primary)] text-red-300 p-2">{healthFilterError}</span>}
         {investigation && <div className="max-w-64 bg-[var(--bg-primary)] border border-[var(--gold-primary)]/40 p-2 text-cyan-300"><p>{investigation.label}</p><p className="text-slate-400">{investigation.track ? 'Sampled positions; gaps omitted' : 'Selected related signals'}</p><button className="underline" onClick={() => setInvestigation(null)}>Clear map highlight</button>{graphObjectId && <button className="ml-2 underline" onClick={() => setGraphOpen(true)}>Reopen object</button>}</div>}
       </div>
-      {graphOpen && <EntityGraphPanel seed={graphSeed} objectId={graphObjectId} onMap={showInvestigation} onClose={closeGraph} />}
+      {graphOpen && <EntityGraphPanel key={`${graphObjectId || graphSeed?.id || "search"}:${graphIntent}`} intent={graphIntent} onContext={setInvestigationContext} seed={graphSeed} objectId={graphObjectId} onMap={showInvestigation} onClose={closeGraph} />}
       {intelPanel === 'health' && <SourceHealthPanel onClose={closeIntelPanel} healthyOnly={healthyOnly} onHealthyOnly={setHealthyOnly} />}
       {intelPanel === 'correlations' && <CorrelationsPanel onClose={closeIntelPanel} onMap={showInvestigation} onObject={openIntelligenceObject} />}
       {/* Guidance belongs over the map, where the clicking happens. */}

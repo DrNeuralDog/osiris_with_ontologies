@@ -1,6 +1,6 @@
 import { gzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 /**
@@ -43,6 +43,7 @@ export async function readSnapshot(): Promise<SnapshotFile | null> {
   // state that leaks between cases if a read lands late.
   if (process.env.OSIRIS_CCTV_SNAPSHOT === 'off') return null;
   try {
+    if ((await stat(snapshotPath())).size > 32 * 1024 * 1024) return null;
     const raw = await readFile(snapshotPath(), 'utf8');
     const parsed = JSON.parse(raw) as SnapshotFile;
     if (parsed?.version !== SNAPSHOT_VERSION || !parsed.regions) return null;
@@ -57,6 +58,7 @@ export async function readSnapshot(): Promise<SnapshotFile | null> {
  * half-written catalogue that the next boot would refuse to parse.
  */
 export async function writeSnapshot(regions: RegionCameras): Promise<void> {
+  if (process.env.OSIRIS_CCTV_SNAPSHOT === 'off') return;
   const path = snapshotPath();
   const payload: SnapshotFile = { version: SNAPSHOT_VERSION, builtAt: Date.now(), regions };
   await mkdir(dirname(path), { recursive: true });
@@ -78,6 +80,8 @@ let payload: Payload | undefined;
 
 /** Serialise and compress once, then hand the same buffers to every caller. */
 export function buildPayload(body: unknown, total: number, complete: boolean): Payload {
+  const cameras = (body as { cameras?: Camera[] })?.cameras;
+  if (Array.isArray(cameras)) indexCameras(cameras);
   const json = Buffer.from(JSON.stringify(body));
   payload = {
     json,
@@ -92,3 +96,28 @@ export function buildPayload(body: unknown, total: number, complete: boolean): P
 
 export const getPayload = () => payload;
 export const clearPayload = () => { payload = undefined; };
+
+// Shared across Next route bundles in one server process. No upstream reads.
+const catalogueGlobal = globalThis as typeof globalThis & { __osirisCameraIndex?: { records: Map<string, Camera>; restoredAt: number; pending?: Promise<void> } };
+const cameraIndex = catalogueGlobal.__osirisCameraIndex ??= { records: new Map<string, Camera>(), restoredAt: 0, pending: undefined as Promise<void> | undefined };
+function indexCameras(cameras: Camera[]) {
+  for (const camera of cameras.slice(0, 60000)) {
+    if (typeof camera.id !== 'string' || camera.id.length > 200) continue;
+    if (cameraIndex.records.size >= 60000 && !cameraIndex.records.has(camera.id)) cameraIndex.records.delete(cameraIndex.records.keys().next().value!);
+    cameraIndex.records.set(camera.id, camera);
+  }
+}
+export async function lookupCachedCamera(id: string): Promise<Camera | null> {
+  if (!id || id.length > 200) return null;
+  if (cameraIndex.records.has(id)) return cameraIndex.records.get(id)!;
+  if (cameraIndex.pending) await cameraIndex.pending;
+  if (Date.now() - cameraIndex.restoredAt > 30000) {
+    cameraIndex.pending ??= (async () => {
+      cameraIndex.restoredAt = Date.now();
+      const saved = await readSnapshot();
+      if (saved) indexCameras(Object.values(saved.regions).flat());
+    })().finally(() => { cameraIndex.pending = undefined; });
+    await cameraIndex.pending;
+  }
+  return cameraIndex.records.get(id) || null;
+}

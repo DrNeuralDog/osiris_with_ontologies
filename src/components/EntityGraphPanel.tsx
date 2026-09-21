@@ -5,6 +5,8 @@ import ForceGraph2D, { type ForceGraphMethods, type NodeObject } from 'react-for
 import { X, Crosshair, RotateCcw, Search, Network, LoaderCircle } from 'lucide-react';
 import EvidenceView from './EvidenceView';
 import ObjectHistory from './ObjectHistory';
+import { investigationView, type InvestigationIntent, type InvestigationContext } from '@/lib/investigation';
+import { intelligenceRequest } from '@/lib/intelligence';
 import type { InvestigationMapFocus } from '@/lib/intelligence';
 import { OBJECT_COLORS, mergeGraph, ontologyRequest, type InvestigationSeed, type OntologyGraph, type OntologyObject, type OntologyLink } from '@/lib/ontology';
 
@@ -13,8 +15,8 @@ const buttonClass = 'px-2 py-1.5 rounded border border-[var(--border-primary)] h
 const empty: OntologyGraph = { root_id: '', nodes: [], links: [], truncated: false };
 const tooltip = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-export default function EntityGraphPanel({ seed, objectId, onMap, onClose }: { seed?: InvestigationSeed; objectId?: string; onMap?: (focus: InvestigationMapFocus) => void; onClose: () => void }) {
-  const [detailTab, setDetailTab] = useState<'details' | 'history'>('details');
+export default function EntityGraphPanel({ seed, objectId, intent='graph', onContext, onMap, onClose }: { seed?: InvestigationSeed; objectId?: string; intent?: InvestigationIntent; onContext?: (context: InvestigationContext) => void; onMap?: (focus: InvestigationMapFocus) => void; onClose: () => void }) {
+  const [detailTab, setDetailTab] = useState<'details' | 'history'>(investigationView(intent).tab);
   const [graph, setGraph] = useState<OntologyGraph>(empty);
   const [selected, setSelected] = useState<string>('');
   const [selectedLink, setSelectedLink] = useState<OntologyLink | null>(null);
@@ -67,13 +69,14 @@ export default function EntityGraphPanel({ seed, objectId, onMap, onClose }: { s
     try {
       const data = await action(signal); if (signal.aborted || generation.current !== version) return;
       setGraph(old => replace ? data : mergeGraph(old, data));
-      if (replace) { setSelected(data.root_id); setResults([]); }
+      if (replace) { setSelected(data.root_id); setResults([]);setType(data.nodes.find(n=>n.id===data.root_id)?.type||'company'); }
       else setSelected(old => data.aliases?.[old] || old);
     } catch (e) { if (!signal.aborted && generation.current === version) setError(e instanceof Error ? e.message : 'Request failed'); }
     finally { if (generation.current === version) { lock.current = false; setBusy(false); } }
   }, []);
   useEffect(() => { if (seed) void run(signal => ontologyRequest('resolve', seed, signal), true); }, [seed, run]);
-  useEffect(() => { if (objectId) void run(signal => ontologyRequest(`objects/${objectId}/graph`, undefined, signal), true); }, [objectId, run]);
+  useEffect(() => { if (objectId) void run(signal => ontologyRequest(`objects/${objectId}/graph?depth=${investigationView(intent).depth}`, undefined, signal), true); }, [objectId, intent, run]);
+  useEffect(() => { if (!graph.root_id || !onContext) return; const c=new AbortController(); void intelligenceRequest<InvestigationContext>(`objects/${graph.root_id}/context`,c.signal).then(onContext).catch(()=>{});return()=>c.abort(); }, [graph.root_id,onContext]);
 
   const expand = (node: OntologyObject) => {
     setSelected(node.id); setSelectedLink(null);
@@ -100,13 +103,13 @@ export default function EntityGraphPanel({ seed, objectId, onMap, onClose }: { s
   };
   return <section role="dialog" aria-modal="true" aria-label="Ontology graph explorer" className="fixed inset-2 md:inset-6 z-[1200] flex flex-col rounded-lg border border-[var(--gold-primary)]/50 bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-2xl font-mono overflow-hidden">
     <header className="flex flex-wrap items-center gap-2 border-b border-[var(--border-primary)] px-4 py-3">
-      <Network size={17} className="text-[var(--gold-primary)]" /><h2 className="text-sm tracking-widest mr-auto">ONTOLOGY / GRAPH EXPLORER</h2>
+      <Network size={17} className="text-[var(--gold-primary)]" /><div className="mr-auto min-w-0"><h2 className="text-sm tracking-widest">OBJECT EXPLORER</h2><p className="text-xs text-[var(--gold-primary)] truncate">{graph.nodes.find(n=>n.id===graph.root_id)?.canonical_name || seed?.name || 'Saved ontology'}{selectedObject&&selectedObject.id!==graph.root_id?` → ${selectedObject.canonical_name}`:''}</p></div>
       <button className={buttonClass} onClick={focus} disabled={!graph.root_id} title="Refocus root"><Crosshair size={16} /></button>
       <button className={buttonClass} onClick={reset} disabled={busy || !graph.root_id} title="Reset to root"><RotateCcw size={16} /></button>
-      <button ref={closeButton} className={buttonClass} onClick={onClose} aria-label="Close graph"><X size={16} /></button>
+      <button ref={closeButton} className={buttonClass} onClick={onClose} aria-label="Back to map / Close graph">Back to map <X className="inline" size={14} /></button>
     </header>
     <form onSubmit={e => { e.preventDefault(); void search(); }} className="flex flex-wrap gap-2 p-3 border-b border-[var(--border-primary)]">
-      <select aria-label="Object type" value={type} onChange={e => setType(e.target.value)} className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs p-2">{['company', 'person', 'country', 'aircraft', 'vessel', 'ip', 'organization', 'location', 'event', 'infrastructure', 'airport', 'port'].map(t => <option key={t}>{t}</option>)}</select>
+      <select aria-label="Object type" value={type} onChange={e => setType(e.target.value)} className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs p-2">{['company', 'person', 'country', 'aircraft', 'vessel', 'ip', 'organization', 'location', 'event', 'infrastructure', 'airport', 'port', 'satellite', 'camera'].map(t => <option key={t}>{t}</option>)}</select>
       <input aria-label="Object name or identifier" value={query} onChange={e => setQuery(e.target.value)} placeholder="Name, Wikidata QID, ICAO24, MMSI or IP…" className="flex-1 min-w-36 bg-transparent border border-[var(--border-primary)] rounded px-2 text-xs" />
       <button disabled={busy || !query.trim()} className={buttonClass} title="Search saved objects"><Search size={15} /></button>
       <button type="button" disabled={busy || !query.trim()} className={buttonClass} onClick={() => void run(signal => ontologyRequest('resolve', { type, id: query.trim() }, signal), true)}>Resolve source</button>

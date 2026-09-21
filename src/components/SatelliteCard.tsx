@@ -1,6 +1,9 @@
 'use client';
 
 import { ExternalLink, Orbit, Satellite, X } from 'lucide-react';
+import InvestigationActions from './InvestigationActions';
+import type { InvestigationSeed } from '@/lib/ontology';
+import type { InvestigationIntent } from '@/lib/investigation';
 
 /**
  * OSIRIS — selected satellite readout
@@ -82,7 +85,7 @@ function Field({ label, value, color }: { label: string; value: string; color?: 
   );
 }
 
-export default function SatelliteCard({ sat, onClose }: { sat: SatelliteDetail; onClose: () => void }) {
+export default function SatelliteCard({ sat, onClose, onInvestigate }: { sat: SatelliteDetail; onClose: () => void; onInvestigate?: (seed: InvestigationSeed, intent: InvestigationIntent) => void }) {
   const accent = colorSafe(sat.color);
   const shell = regime(sat.alt);
 
@@ -141,6 +144,8 @@ export default function SatelliteCard({ sat, onClose }: { sat: SatelliteDetail; 
         {sat.track === 'ready' && <span style={{ color: accent }}>ORBIT TRACK ON GLOBE</span>}
         {sat.track === 'unavailable' && <span>NO TRACK — TLE UNAVAILABLE</span>}
       </div>
+
+      {onInvestigate && <div className="px-2.5 pb-2"><InvestigationActions entity={{ ...sat, type: 'satellite' }} onInvestigate={onInvestigate} /></div>}
 
       {sat.noradId && (
         <a

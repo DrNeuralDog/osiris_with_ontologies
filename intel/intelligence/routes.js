@@ -4,9 +4,15 @@ const {SourceHealth}=require('./health');
 const {CorrelationEngine}=require('./correlations');
 const {POLICIES}=require('./policy');
 const {THRESHOLDS}=require('./rules');
+const {IntelligenceSummary}=require('./summary');
+const {investigate,objectContext}=require('./investigate');
 function intelligenceRoutes(store){
  const router=express.Router(),health=new SourceHealth(store),engine=new CorrelationEngine(store);
+ const summary=new IntelligenceSummary(store);
  router.use(express.json({limit:'128kb'}));
+ router.get('/summary',async(req,res)=>{M.check(Object.keys(req.query).length===0,'Summary takes no query');res.json(await summary.get());});
+ router.post('/investigate',async(req,res)=>res.json(await investigate(store,req.body)));
+ router.get('/objects/:id/context',async(req,res)=>res.json(await objectContext(store,req.params.id)));
  router.get('/policies',(_req,res)=>res.json({freshness:POLICIES,correlation_thresholds:THRESHOLDS,confidence:'Numeric values are source-provided only; correlation strength is categorical rule support, not probability'}));
  router.get('/sources',async(req,res)=>res.json(await health.list(req.query)));
  router.get('/sources/:id',async(req,res)=>res.json(await health.detail(req.params.id)));

@@ -10,6 +10,9 @@ import { STYLE_EVENT } from '@/lib/style-tokens';
 import { arrivalBeacons } from '@/lib/malware-intel';
 import { ALERT_KINDS, timeAgo, type AlertKind } from '@/lib/alert-digest';
 import SatelliteCard, { type SatelliteDetail } from '@/components/SatelliteCard';
+import { createRoot } from 'react-dom/client';
+import InvestigationActions from '@/components/InvestigationActions';
+import { investigationPoint } from '@/lib/investigation';
 import CctvPreviews, { type PreviewCamera } from '@/components/CctvPreviews';
 import MapControls from '@/components/MapControls';
 import LiveNewsPreviews, { type PreviewFeed } from '@/components/LiveNewsPreviews';
@@ -921,11 +924,11 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
     const explore = (entity: Record<string, unknown>) => {
       const element = popupRef.current?.getElement();
       if (!element) return;
-      const button = document.createElement('button');
-      button.type = 'button'; button.textContent = 'Explore relationships';
-      button.style.cssText = 'display:block;width:100%;padding:9px;margin-top:8px;border:1px solid #D4AF3760;border-radius:4px;color:#D4AF37;background:#131821;font:11px monospace;cursor:pointer';
-      button.addEventListener('click', () => onEntityClick?.(entity));
-      element.querySelector('.maplibregl-popup-content')?.appendChild(button);
+      const host = document.createElement('div');
+      element.querySelector('.maplibregl-popup-content')?.appendChild(host);
+      const root = createRoot(host);
+      root.render(<InvestigationActions entity={entity} onInvestigate={(seed, intent) => onEntityClick?.({ investigation_seed: seed, investigation_intent: intent })} />);
+      popupRef.current?.once('close', () => queueMicrotask(() => root.unmount()));
     };
     const pStyle = `background:rgba(12,14,26,0.95);backdrop-filter:blur(16px);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;`;
     const linkStyle = `display:inline-block;margin-top:8px;padding:5px 12px;font-size:10px;letter-spacing:0.12em;text-decoration:none;border-radius:5px;font-family:'JetBrains Mono',monospace;`;
@@ -942,6 +945,15 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
         return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short' });
       } catch { return '—'; }
     };
+
+    map.on('click', 'watched-airport-dot', e => {
+      const feature = e.features?.[0];
+      if (!feature || feature.geometry.type !== 'Point') return;
+      const coords = feature.geometry.coordinates as [number, number];
+      const p = feature.properties;
+      popup(coords, `<div style="${pStyle}">${htmlEsc(p.name || p.label)} · ${htmlEsc(p.icao)}</div>`);
+      explore({ ...p, type: 'airport', ...investigationPoint(p, coords) });
+    });
 
     // ── Flights (with FlightAware + ADS-B Exchange links + ROUTE VISUALIZATION) ──
     ['fl-commercial','fl-private','fl-jets','fl-military'].forEach(layer => {
@@ -980,7 +992,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
           </div>
         </div>`);
 
-        const aircraftEntity: Record<string, unknown> = { type: 'aircraft', id: p.icao24 || p.registration || cs, icao24: p.icao24, registration: p.registration, callsign: cs, model: p.model, name: cs, provider: 'OSIRIS ADS-B feed' };
+        const aircraftEntity: Record<string, unknown> = { ...p, type: 'aircraft', id: p.icao24 || p.registration || cs, icao24: p.icao24, registration: p.registration, callsign: cs, model: p.model, name: cs, ...investigationPoint(p, coords), provider: p.provider || 'OSIRIS ADS-B feed' };
         explore(aircraftEntity);
 
         // The transponder only reports a type code (often nothing at all), so
@@ -1089,6 +1101,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
         </div>
         <a href="${p.source === 'NIGGG-BAS' ? 'https://ndc.niggg.bas.bg/' : `https://earthquake.usgs.gov/earthquakes/eventpage/${encodeURIComponent(p.id||'')}`}" target="_blank" style="${linkStyle}color:#FF9500;border:1px solid rgba(255,149,0,0.4);background:rgba(255,149,0,0.1);">📊 ${p.source === 'NIGGG-BAS' ? 'NIGGG-BAS' : 'USGS DETAILS'}</a>
       </div>`);
+      explore({ ...p, type: 'earthquake', ...investigationPoint(p, coords), name: p.place, provider: 'USGS' });
     });
 
     // ── Satellites (SatNOGS powered) ──
@@ -1098,7 +1111,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
       'gdelt-dots','weather-dots','infra-dots','maritime-dots','choke-dots','news-dots',
       'balloon-dots','rad-dots','ship-dots','sweep-device-dots','scan-targets-dots',
       'sdk-sea','sdk-air','sdk-intel','malware-dots','cyber-heads','gdelt-events-dots',
-      'cf-outage-dots','cf-attack-dots','flight-dots','military-dots','jet-dots','private-dots','alert-pin-dots']);
+      'cf-outage-dots','cf-attack-dots','flight-dots','military-dots','jet-dots','private-dots','alert-pin-dots','watched-airport-dot']);
 
     // Satellites are picked on the GPU: the pick pass runs the same vertex
     // shader as the visible one, so the target is always exactly where the
@@ -1195,6 +1208,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
         </div>
         <a href="https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;l:noaa20-viirs,viirs,modis_a,modis_t;@${coords[0]},${coords[1]},10z" target="_blank" style="${linkStyle}color:#FF6B00;border:1px solid rgba(255,107,0,0.4);background:rgba(255,107,0,0.1);">🛰️ NASA FIRMS MAP</a>
       </div>`);
+      explore({ ...p, ...investigationPoint(p, coords), name: p.title || 'FIRMS fire detection' });
     });
 
     // ── Malware Threats (Abuse.ch) ──
@@ -1554,7 +1568,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
         <div><span style="color:#5C5A54;font-size:9px;">DESTINATION: </span><span style="color:#E8E6E0;font-size:9px;">${p.destination || 'UNKNOWN'}</span></div>
         <a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${p.mmsi}" target="_blank" style="${linkStyle}flex:1;text-align:center;color:${color};border:1px solid ${color}40;background:${color}15;display:inline-block;width:100%;box-sizing:border-box;margin-top:4px;">[ OPEN SOURCE ↗ ]</a>
       </div>`);
-      explore({ type: 'vessel', id: p.imo || p.mmsi || p.name, mmsi: p.mmsi, imo: p.imo, name: p.name, provider: 'OSIRIS AIS feed' });
+      explore({ ...p, type: 'vessel', id: p.imo || p.mmsi || p.name, ...investigationPoint(p, coords), provider: p.provider || 'OSIRIS AIS feed' });
     });
 
     // ── Weather Events (NASA EONET + NOAA/NWS + GDACS) ──
@@ -1574,6 +1588,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
           ${p.source ? `<a href="${p.source}" target="_blank" style="${linkStyle}color:#E040FB;border:1px solid rgba(224,64,251,0.4);background:rgba(224,64,251,0.1);">📡 SOURCE</a>` : ''}
         </div>
       </div>`);
+      explore({ ...p, type: 'weather', event_kind: p.type, ...investigationPoint(p, coords) });
     });
 
     // ── Nuclear Infrastructure ──
@@ -1619,7 +1634,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
           <a href="https://www.google.com/maps/@${coords[1]},${coords[0]},14z/data=!3m1!1e3" target="_blank" rel="noopener noreferrer" style="${linkStyle}color:#8A8880;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);">SATELLITE</a>
         </div>
       </div>`);
-      if (p.owner) explore({ type: 'company', id: p.owner, name: p.owner, provider: 'OSIRIS infrastructure source' });
+      explore({ ...p, type: 'infrastructure', ...investigationPoint(p, coords) });
     });
 
     // ── Maritime Ports & Naval Bases ──
@@ -1646,6 +1661,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
         ${p.rank ? `<div style="font-size:9px;color:#aaa;">Global Rank: <span style="color:${typeColor};font-weight:bold;">#${p.rank}</span></div>` : ''}
         ${congestionHtml}
       </div>`);
+      explore({ ...p, type: 'port', ...investigationPoint(p, coords) });
     });
 
     // ── Maritime Chokepoints ──
@@ -1733,6 +1749,8 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
     };
     const openAlertPopup = (feature: AlertPinFeature, leadId?: string) => {
       popup(feature.geometry.coordinates, alertPopupHtml(reportsAt(feature.geometry.coordinates, leadId)));
+      const report = reportsAt(feature.geometry.coordinates, leadId)[0];
+      if (report) explore({ ...report, type: 'news', provider: report.source_name, location_precision: report.precision, place: { precision: 'reported_place', name: report.place_label }, lat: feature.geometry.coordinates[1], lng: feature.geometry.coordinates[0] });
       markSelected(feature.properties.id);
       popupRef.current?.once('close', () => markSelected(''));
     };
@@ -1792,7 +1810,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
       }
       return filtered.map((f: any) => ({
         type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [f.lng, f.lat] },
-        properties: { callsign: f.callsign, heading: f.heading || 0, alt: f.alt, model: f.model, speed_knots: f.speed_knots, registration: f.registration, icao24: f.icao24 },
+        properties: { lat: f.lat, lng: f.lng, observed_at: f.observed_at, provider: f.provider, on_ground: f.on_ground, callsign: f.callsign, heading: f.heading || 0, alt: f.alt, model: f.model, speed_knots: f.speed_knots, registration: f.registration, icao24: f.icao24 },
       }));
     };
     setGeo('flights', activeLayers.flights ? toFeatures(data.commercial_flights, 10) : []);
@@ -1873,7 +1891,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
 
   useEffect(() => {
     if (!mapReady) return;
-    setGeo('earthquakes', activeLayers.earthquakes && data.earthquakes ? data.earthquakes.map((eq: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [eq.lng, eq.lat] }, properties: { id: eq.id, magnitude: eq.magnitude, place: eq.place, depth: eq.depth, source: eq.source } })) : []);
+    setGeo('earthquakes', activeLayers.earthquakes && data.earthquakes ? data.earthquakes.map((eq: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [eq.lng, eq.lat] }, properties: { ...eq } })) : []);
   }, [mapReady, data.earthquakes, activeLayers.earthquakes, setGeo]);
 
   /** Catalogue rows -> the packed form the 3D layer draws. */
@@ -2120,24 +2138,24 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
 
   useEffect(() => {
     if (!mapReady) return;
-    setGeo('fires', activeLayers.fires && data.fires ? data.fires.map((f: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [f.lng, f.lat] }, properties: { brightness: f.brightness } })) : []);
+    setGeo('fires', activeLayers.fires && data.fires ? data.fires.map((f: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [f.lng, f.lat] }, properties: { ...f } })) : []);
   }, [mapReady, data.fires, activeLayers.fires, setGeo]);
 
   useEffect(() => {
     if (!mapReady) return;
-    setGeo('weather', activeLayers.weather && data.weather_events ? data.weather_events.map((w: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [w.lng, w.lat] }, properties: { title: w.title, type: w.type, icon: w.icon, severity: w.severity, source: w.source, id: w.id } })) : []);
+    setGeo('weather', activeLayers.weather && data.weather_events ? data.weather_events.map((w: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [w.lng, w.lat] }, properties: { ...w } })) : []);
   }, [mapReady, data.weather_events, activeLayers.weather, setGeo]);
 
   useEffect(() => {
     if (!mapReady) return;
-    setGeo('infrastructure', activeLayers.infrastructure && data.infrastructure ? data.infrastructure.map((i: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [i.lng, i.lat] }, properties: { name: i.name, city: i.city, country: i.country, status: i.status, reactors: i.reactors, capacityMW: i.capacityMW, owner: i.owner, sourceUrl: i.sourceUrl ?? null } })) : []);
+    setGeo('infrastructure', activeLayers.infrastructure && data.infrastructure ? data.infrastructure.map((i: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [i.lng, i.lat] }, properties: { ...i } })) : []);
   }, [mapReady, data.infrastructure, activeLayers.infrastructure, setGeo]);
 
   useEffect(() => {
     if (!mapReady) return;
-    setGeo('maritime', activeLayers.maritime && data.maritime_ports ? data.maritime_ports.map((p: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { name: p.name, country: p.country, type: p.type, volume: p.volume, fleet: p.fleet, rank: p.rank } })) : []);
+    setGeo('maritime', activeLayers.maritime && data.maritime_ports ? data.maritime_ports.map((p: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { ...p } })) : []);
     setGeo('maritime-choke', activeLayers.maritime && data.maritime_chokepoints ? data.maritime_chokepoints.map((c: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [c.lng, c.lat] }, properties: { name: c.name, traffic: c.traffic, risk: c.risk } })) : []);
-    setGeo('maritime-ships', activeLayers.maritime && data.maritime_ships ? data.maritime_ships.map((s: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [s.lng, s.lat] }, properties: { mmsi: s.mmsi, imo: s.imo, name: s.name || s.mmsi?.toString(), type: s.type || 'cargo', speed: s.speed, heading: s.heading, destination: s.destination, flag: s.flag } })) : []);
+    setGeo('maritime-ships', activeLayers.maritime && data.maritime_ships ? data.maritime_ships.map((s: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [s.lng, s.lat] }, properties: { ...s, mmsi: s.mmsi, imo: s.imo, name: s.name || s.mmsi?.toString(), type: s.type || 'cargo', speed: s.speed, heading: s.heading, destination: s.destination, flag: s.flag } })) : []);
   }, [mapReady, data.maritime_ports, data.maritime_chokepoints, data.maritime_ships, activeLayers.maritime, setGeo]);
 
   useEffect(() => {
@@ -2944,7 +2962,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
       })
       .map((a) => ({
         type: 'Feature' as const,
-        properties: { label: a.iata || a.icao, city: a.city || '' },
+        properties: { label: a.iata || a.icao, name: a.city || a.icao, lat: a.lat, lng: a.lng, icao: a.icao, iata: a.iata, city: a.city || '' },
         geometry: { type: 'Point' as const, coordinates: [a.lng, a.lat] },
       }));
 
@@ -3261,7 +3279,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
           })}
         />
       )}
-      {selectedSat && <SatelliteCard sat={selectedSat} onClose={clearSat} />}
+      {selectedSat && <SatelliteCard sat={selectedSat} onClose={clearSat} onInvestigate={(seed, intent) => onEntityClick?.({ investigation_seed: seed, investigation_intent: intent })} />}
       {mapReady && <MapControls mapRef={mapRef} onInteract={onFollowInterrupt} />}
     </>
   );

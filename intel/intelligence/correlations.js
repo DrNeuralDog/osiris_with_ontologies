@@ -2,8 +2,9 @@ const {randomUUID}=require('node:crypto');
 const M=require('../ontology/model');
 const {integer}=require('./policy');
 const {evaluate}=require('./rules');
+const {CorrelationPages}=require('./correlation-pages');
 class CorrelationEngine{
- constructor(store){this.store=store;this.running=false;this.lastRun=0;}
+ constructor(store){this.store=store;this.running=false;this.lastRun=0;this.pages=new CorrelationPages();}
  async persist(candidates,now=Date.now(),evaluated=[]){
   M.check(candidates.length<=500,'Too many correlations');
   return this.store.transaction(async db=>{
@@ -55,10 +56,11 @@ class CorrelationEngine{
   const limit=integer(raw.limit,40,1,100),status=raw.status||'ACTIVE';M.check(['ACTIVE','EXPIRED','DISMISSED','all'].includes(status),'Invalid correlation status');
   if(raw.type)M.check(/^[A-Z_]{3,64}$/.test(raw.type),'Invalid correlation type');
   if(raw.object_id)M.uuid(raw.object_id);
-  const cursor=raw.cursor?M.uuid(raw.cursor):null;
+  const filters=JSON.stringify([status,raw.type||null,raw.object_id||null]);
+  if(raw.cursor!==undefined){M.check(typeof raw.cursor==='string'&&raw.cursor.length>0,'Invalid correlation cursor');return this.pages.page(null,filters,limit,raw.cursor);}
   const rows=(await this.store.pool.query(`SELECT c.* FROM intelligence_correlations c WHERE ($1='all' OR status=$1) AND ($2::text IS NULL OR correlation_type=$2)
-    AND ($3::uuid IS NULL OR $3=ANY(related_object_ids)) AND ($4::uuid IS NULL OR id>$4) ORDER BY id LIMIT $5`,[status,raw.type||null,raw.object_id||null,cursor,limit+1])).rows;
-  return {items:rows.slice(0,limit),next_cursor:rows.length>limit?rows[limit-1].id:null,coverage:'Bounded screening; absence of a correlation does not establish safety'};
+    AND ($3::uuid IS NULL OR $3=ANY(related_object_ids)) ORDER BY last_confirmed_at DESC,id DESC LIMIT 2001`,[status,raw.type||null,raw.object_id||null])).rows;
+  return this.pages.page(rows.slice(0,2000),filters,limit,null,rows.length>2000);
  }
  async get(id){
   const row=(await this.store.pool.query('SELECT * FROM intelligence_correlations WHERE id=$1',[M.uuid(id)])).rows[0];if(!row)throw new M.InputError('Correlation not found',404);

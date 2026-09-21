@@ -1,5 +1,5 @@
 # Dependencies
-/node_modules
+**/node_modules/
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -63,3 +63,5 @@ scanner_backend_backup.js
 
 # Saved camera catalogue
 /.cache/
+/off
+/off.*.tmp

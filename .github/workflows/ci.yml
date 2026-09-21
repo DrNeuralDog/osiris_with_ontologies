@@ -1,0 +1,64 @@
+name: OSIRIS checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frontend:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: TypeScript validation
+        run: npx tsc --noEmit
+      - name: No tracked runtime dependencies
+        run: node tools/check-repository-artifacts.mjs
+  intel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: osiris
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: osiris_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U osiris -d osiris_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    defaults:
+      run:
+        working-directory: intel
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: osiris
+      PGPASSWORD: ci-only-password
+      PGDATABASE: osiris_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: intel/package-lock.json
+      - run: npm ci
+      - name: Require real PostgreSQL and run all backend tests
+        run: npm test

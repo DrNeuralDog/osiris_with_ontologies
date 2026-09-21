@@ -68,7 +68,7 @@ export async function GET() {
     } catch (e) { console.warn('[OSIRIS] Suppressed EONET error:', e instanceof Error ? e.message : e); }
 
     return NextResponse.json({
-      fires,
+      fires: fires.map(f => ({ ...f, provider: f.type === 'fire' ? source : 'NASA-EONET' })),
       total: fires.length,
       source: source || 'Unknown',
       timestamp: new Date().toISOString(),
