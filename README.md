@@ -281,3 +281,5 @@ If you want to help keep the servers alive, and support us to get access to bett
 Глобальная временная шкала, LIVE/REPLAY, исторические observations и temporal API: [docs/WorldReplay.md](docs/WorldReplay.md).
 
 Stage 3: [World Data Expansion — источники, API, ограничения](docs/WorldDataExpansion.md).
+
+Stage 3C.1: [Civilian Air Threat — AOI, официальные сообщения, кластеры, акустика и Replay](docs/CivilianAirThreat.md).

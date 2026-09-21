@@ -69,6 +69,7 @@ class HistoryService {
   return {object_id:object.id,property:property||null,evidence:rows};
  }
  async prune(){
+  await this.store.pool.query("DELETE FROM intelligence_official_alert_states WHERE id IN (SELECT id FROM intelligence_official_alert_states WHERE confirmed_until<now()-($1::int*interval '1 day') LIMIT 5000)",[Math.min(3650,Math.max(1,Number(process.env.HISTORY_RETENTION_DAYS)||90))]);
   await this.store.pool.query("DELETE FROM intelligence_correlation_versions WHERE id IN (SELECT id FROM intelligence_correlation_versions WHERE recorded_at<now()-($1::int*interval '1 day') ORDER BY recorded_at LIMIT 5000)",[Math.min(3650,Math.max(1,Number(process.env.HISTORY_RETENTION_DAYS)||90))]);
   return this.store.pool.query('DELETE FROM intelligence_observations WHERE id IN (SELECT id FROM intelligence_observations WHERE retained_until<now() ORDER BY retained_until LIMIT 5000)');
  }

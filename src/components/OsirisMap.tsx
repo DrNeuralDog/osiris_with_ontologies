@@ -14,6 +14,7 @@ import { createRoot } from 'react-dom/client';
 import InvestigationActions from '@/components/InvestigationActions';
 import { investigationPoint } from '@/lib/investigation';
 import WorldLayers from './WorldLayers';
+import AirThreatMap from './AirThreatMap';
 import { useReplayMap } from './useReplayMap';
 import type { ReplayItem } from '@/lib/replay';
 import CctvPreviews, { type PreviewCamera } from '@/components/CctvPreviews';
@@ -3289,6 +3290,7 @@ function OsirisMap({ worldLayers, worldReplayAt = null, replayItems = null, onRe
           })}
         />
       )}
+      <AirThreatMap mapRef={mapRef} ready={mapReady} />
       <WorldLayers mapRef={mapRef} ready={mapReady} layers={worldLayers || activeLayers} replayAt={worldReplayAt} onInvestigate={(seed,intent)=>onEntityClick?.({investigation_seed:seed,investigation_intent:intent})} />
       {!replayItems && selectedSat && <SatelliteCard sat={selectedSat} onClose={clearSat} onInvestigate={(seed, intent) => onEntityClick?.({ investigation_seed: seed, investigation_intent: intent })} />}
       {mapReady && <MapControls mapRef={mapRef} onInteract={onFollowInterrupt} />}

@@ -11,9 +11,13 @@ function intelligenceRoutes(store){
  const router=express.Router(),health=new SourceHealth(store),engine=new CorrelationEngine(store);
  const summary=new IntelligenceSummary(store);
  const timeline=new TimelineService(store);
+ const air=new (require('./air-service').AirThreatService)(store);
+ router.get('/air-threat/state',async(req,res)=>res.json(await air.state(req.query)));
+ router.get('/air-threat/areas',async(req,res)=>{M.check(Object.keys(req.query).length===0,'Areas takes no query');res.json(await air.areas());});
  for(const action of ['state','events','coverage','chunk'])router.get(`/timeline/${action}`,async(req,res)=>res.json(await timeline[action](req.query)));
  router.use(express.json({limit:'128kb'}));
  router.get('/summary',async(req,res)=>{M.check(Object.keys(req.query).length===0,'Summary takes no query');res.json(await summary.get());});
+ router.post('/air-threat/acoustic',async(req,res)=>res.json(await air.acoustic(req.body)));
  router.post('/investigate',async(req,res)=>res.json(await investigate(store,req.body)));
  router.get('/objects/:id/context',async(req,res)=>res.json(await objectContext(store,req.params.id)));
  router.get('/policies',(_req,res)=>res.json({freshness:POLICIES,correlation_thresholds:THRESHOLDS,confidence:'Numeric values are source-provided only; correlation strength is categorical rule support, not probability'}));

@@ -1,4 +1,6 @@
 'use client';
+import AirThreatProvider, { useAirThreat } from '@/components/AirThreatProvider';
+
 import { WORLD_DEFAULTS } from '@/lib/world/types';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
@@ -31,6 +33,7 @@ import WorldReplayProvider, { useWorldReplay } from '@/components/WorldReplayPro
 const GlobalTimeline = dynamic(() => import('@/components/GlobalTimeline'), { ssr: false });
 import { type InvestigationSeed } from '@/lib/ontology';
 import { mapEntitySeed, registerInvestigation, type InvestigationIntent, type InvestigationContext } from '@/lib/investigation';
+const AirThreatPanel = dynamic(() => import('@/components/AirThreatPanel'), { ssr: false });
 const IntelligenceCenter = dynamic(() => import('@/components/IntelligenceCenter'), { ssr: false });
 const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'), { ssr: false });
 const SourceHealthPanel = dynamic(() => import('@/components/SourceHealthPanel'), { ssr: false });
@@ -154,8 +157,9 @@ const newsTransform = (d: { news?: unknown[]; sources?: unknown[]; timestamp?: s
   alert_pins: (d.news ?? []).filter(n => (n as { place?: unknown } | null)?.place),
 });
 
-export default function Page() { return <WorldReplayProvider><Dashboard /></WorldReplayProvider>; }
+export default function Page() { return <WorldReplayProvider><AirThreatProvider><Dashboard /></AirThreatProvider></WorldReplayProvider>; }
 function Dashboard() {
+  const airThreat = useAirThreat();
   const replay = useWorldReplay();
   const replaying = replay.state.mode === 'replay';
   const replayMapData = useMemo(()=>({}),[]);
@@ -1941,6 +1945,7 @@ function Dashboard() {
       />
 
       <GlobalTimeline onFocus={(lat,lng)=>setFlyToLocation({lat,lng,zoom:6,ts:Date.now()})} onObject={(id,intent)=>{setGraphIntent(intent);setGraphSeed(undefined);setGraphObjectId(id);setGraphOpen(true);setIntelPanel(null);}} />
+      {airThreat.open && <AirThreatPanel onFocus={(lat,lng)=>setFlyToLocation({lat,lng,zoom:7,ts:Date.now()})} onObject={(id,intent)=>{setGraphIntent(intent);setGraphSeed(undefined);setGraphObjectId(id);setGraphOpen(true);}} />}
       <IntelligenceCenter context={investigationContext} busy={registering} error={investigationError}
         onExplorer={()=>{setGraphIntent('graph');setGraphObjectId(undefined);setGraphSeed(undefined);setGraphOpen(true);}}
         onHealth={()=>setIntelPanel('health')} onCorrelations={()=>setIntelPanel('correlations')}

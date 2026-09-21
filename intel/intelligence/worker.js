@@ -41,7 +41,7 @@ class IntelligenceWorker{
    if(id==='flights'&&(!body.total||String(body.source).includes('stale')))throw new Error('EMPTY_OR_STALE');
    if(id==='fires'&&body.source==='Unknown')throw new Error('UPSTREAM_UNAVAILABLE');
    let imported=0;
-   if(id==='world-conflicts'){if(body.status==='UNAVAILABLE')throw new Error('UPSTREAM_UNAVAILABLE');imported=await require('./world').ingestWorld(this.store,body);}
+   if(id==='world-conflicts'){if(body.official_providers)await require('./air-registry').updateCapabilities(this.store,body.official_providers);if(body.status==='UNAVAILABLE')throw new Error('UPSTREAM_UNAVAILABLE');imported=await require('./world').ingestWorld(this.store,body);}
    if(id==='catalog')imported=await this.ingest.assets(body);
    else if(['flights','maritime'].includes(id)){imported=await this.ingest.telemetry(id,body);if(id==='maritime')await this.ingest.assets({ports:body.ports});}
    else if(['earthquakes','fires','weather','cyber-attacks','news'].includes(id))imported=await this.ingest.events(id,body);

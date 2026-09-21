@@ -1,9 +1,11 @@
+import {alertsInUA,providerCapabilities} from '@/lib/air-threat/providers';
+export {alertsInUA} from '@/lib/air-threat/providers';
 import {fetchGdeltEvents,type GdeltEvent} from '@/lib/gdeltEvents';
-import {ProviderCache,boundedJSON,readBoundedJSON} from './server-cache';
+import {ProviderCache,boundedJSON} from './server-cache';
 import {array,record,str,num,timestamp,CONFLICT_TYPES,type WorldRecord,type ProviderResult,type Precision} from './types';
 const gdeltCache=new ProviderCache('gdelt-conflict',900000,15000,1);
 const warCache=new ProviderCache('war-tracker',120000,120000,1);
-const alertsCache=new ProviderCache('alerts-in-ua',120000,120000,1);
+
 export const retainedReportsAt=(records:WorldRecord[],now=Date.now())=>records.filter(r=>r.observed_at!=null&&Number.isFinite(Date.parse(r.observed_at))&&Date.parse(r.observed_at)<=now);
 export function reported(input:Partial<WorldRecord>&Pick<WorldRecord,'id'|'provider'|'name'|'subtype'>):WorldRecord {
  const point=typeof input.lat==='number'&&Number.isFinite(input.lat)&&Math.abs(input.lat)<=90&&typeof input.lon==='number'&&Number.isFinite(input.lon)&&Math.abs(input.lon)<=180;
@@ -30,20 +32,11 @@ export async function warTracker():Promise<ProviderResult>{
   records.push(...array(r.events||r.data).map(warRecord).filter((v):v is WorldRecord=>!!v));cursor=typeof r.next_cursor==='string'&&r.next_cursor.length<=4096?r.next_cursor:null;if(!cursor)break;
  }return {records:records.slice(0,200),status:'AVAILABLE',truncated:!!cursor};});
 }
-let alertsModified:string|undefined,alertsBody:unknown;
-export async function alertsInUA():Promise<ProviderResult>{
- const token=process.env.ALERTS_IN_UA_TOKEN;if(!token)return {records:[],status:'KEY_REQUIRED'};
- return alertsCache.get('active',async()=>{
-  const res=await fetch('https://api.alerts.in.ua/v1/alerts/active.json',{redirect:'error',signal:AbortSignal.timeout(12000),headers:{Authorization:`Bearer ${token}`,...(alertsModified?{'If-Modified-Since':alertsModified}:{})}});
-  if(res.status!==304){if(!res.ok){await res.body?.cancel();throw new Error(`HTTP_${res.status}`);}alertsBody=await readBoundedJSON(res,1024*1024);alertsModified=res.headers.get('last-modified')||undefined;}
-  const records=array(record(alertsBody).alerts).slice(0,500).flatMap(v=>{const r=record(v),id=str(r.id),at=timestamp(r.started_at);if(!id||!at)return [];return [reported({id:`alerts-in-ua:${id}`,provider:'alerts.in.ua',name:`${str(r.alert_type)} · ${str(r.location_title_en||r.location_title)}`,subtype:r.alert_type==='air_raid'?'AIR_RAID_ALERT':'CONFLICT_EVENT',observed_at:at,url:'https://alerts.in.ua/',location_precision:r.location_type==='oblast'?'REGION':'DISTRICT',properties:{country:'UA',location_uid:r.location_uid,location_title:r.location_title,threats:r.threats||[],valid_from:at,valid_to:timestamp(r.finished_at),raw_event_type:r.alert_type,coordinates_unavailable:true}})];});return {records,status:'AVAILABLE'};
- });
-}
 export async function conflicts(){
  const sources=await Promise.allSettled([gdeltCache.get('recent',async()=>({records:(await fetchGdeltEvents({quads:[4],minArticles:1,limit:300})).events.filter(e=>e.source_time_available!==false&&['18','19','20'].includes(e.root_code)).map(gdeltRecord),status:'AVAILABLE'})),warTracker(),alertsInUA()]);
  // Keep source time intact; a feed's future report must not become a current observation.
  const now=Date.now();
  const providers=sources.map((r,i)=>({provider:['GDELT','War-Tracker','alerts.in.ua'][i],...(r.status==='fulfilled'?{status:r.value.status,message:'message' in r.value?r.value.message:undefined,count:retainedReportsAt(r.value.records,now).length,future_records_omitted:r.value.records.filter(v=>v.observed_at&&Date.parse(v.observed_at)>now).length}:{status:'UNAVAILABLE',message:r.reason instanceof Error?r.reason.message:'PROVIDER_FAILURE',count:0})}));
- const records=retainedReportsAt(sources.flatMap(r=>r.status==='fulfilled'?r.value.records:[]),now).sort((a,b)=>String(b.observed_at).localeCompare(String(a.observed_at))).slice(0,600);
- return {records,providers,status:providers.some(p=>p.status==='AVAILABLE')?'AVAILABLE':'UNAVAILABLE',truncated:records.length>=600};
+ const records=retainedReportsAt(sources.flatMap(r=>r.status==='fulfilled'?r.value.records:[]),now).sort((a,b)=>Number(b.provider==='alerts.in.ua')-Number(a.provider==='alerts.in.ua')||String(b.observed_at).localeCompare(String(a.observed_at))).slice(0,600).sort((a,b)=>String(b.observed_at).localeCompare(String(a.observed_at)));
+ return {records,providers,official_providers:providerCapabilities(),status:providers.some(p=>p.status==='AVAILABLE')?'AVAILABLE':'UNAVAILABLE',truncated:records.length>=600};
 }

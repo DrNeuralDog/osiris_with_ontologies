@@ -25,7 +25,7 @@ function query(raw={},kind='state',now=Date.now()){
  M.check(!raw.cursor||kind==='events','Cursor only applies to events');
  return {at,to,from,domains,bbox,limit,cursor};
 }
-const DOMAIN_SQL="CASE WHEN s.event_type='POSITION' THEN o.type WHEN s.event_type='FIRE' THEN 'fire' WHEN s.event_type='EARTHQUAKE' THEN 'earthquake' WHEN s.event_type IN ('SEVERE_WEATHER','WEATHER') THEN 'weather' WHEN s.event_type='CONFLICT_REPORT' THEN 'conflict' WHEN s.event_type='NEWS_EVENT' THEN 'news' WHEN s.event_type='CYBER_INDICATOR' THEN 'cyber' WHEN s.event_type='REFERENCE_LOCATION' THEN 'infrastructure' END";
+const DOMAIN_SQL="CASE WHEN s.event_type='POSITION' THEN o.type WHEN s.event_type='FIRE' THEN 'fire' WHEN s.event_type='EARTHQUAKE' THEN 'earthquake' WHEN s.event_type IN ('SEVERE_WEATHER','WEATHER') THEN 'weather' WHEN s.event_type IN ('CONFLICT_REPORT','HEARD_EXPLOSION','OFFICIAL_ALERT') THEN 'conflict' WHEN s.event_type='NEWS_EVENT' THEN 'news' WHEN s.event_type='CYBER_INDICATOR' THEN 'cyber' WHEN s.event_type='REFERENCE_LOCATION' THEN 'infrastructure' END";
 class TimelineService{
  constructor(store){this.store=store;this.cache=new Map();}
  async read(fn){const db=await this.store.pool.connect();try{await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL statement_timeout='4000ms'");const value=await fn(db);await db.query('COMMIT');return value;}catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}}

@@ -1,7 +1,8 @@
+import airPolicy from '../../../intel/intelligence/air-policy.json';
 export type Bounds = [number, number, number, number];
 export const INFRA_CATEGORIES = ['power','substation','transmission','pipeline','terminal','telecom','data_center','dam','transport'] as const;
 export type InfraCategory = typeof INFRA_CATEGORIES[number];
-export const CONFLICT_TYPES = ['AIR_RAID_ALERT','DRONE_REPORT','DRONE_ATTACK','MISSILE_REPORT','MISSILE_LAUNCH','GUIDED_BOMB_REPORT','AIR_DEFENSE_ACTIVITY','INTERCEPTION_REPORT','EXPLOSION_REPORT','AIRSTRIKE','MILITARY_STRIKE','ARTILLERY','GROUND_CLASH','INFRASTRUCTURE_STRIKE_REPORT','CONFLICT_EVENT'] as const;
+export const CONFLICT_TYPES = [...airPolicy.taxonomy,'AIR_RAID_ALERT','DRONE_REPORT','DRONE_ATTACK','MISSILE_REPORT','MISSILE_LAUNCH','GUIDED_BOMB_REPORT','AIR_DEFENSE_ACTIVITY','INTERCEPTION_REPORT','EXPLOSION_REPORT','AIRSTRIKE','MILITARY_STRIKE','ARTILLERY','GROUND_CLASH','INFRASTRUCTURE_STRIKE_REPORT','CONFLICT_EVENT'] as const;
 export type Precision = 'EXACT_SOURCE_COORDINATE'|'LOCALITY'|'DISTRICT'|'REGION'|'APPROXIMATE'|'UNKNOWN';
 export interface WorldRecord {
  id:string; provider:string; name:string; domain:'infrastructure'|'weather'|'conflict'; subtype:string;

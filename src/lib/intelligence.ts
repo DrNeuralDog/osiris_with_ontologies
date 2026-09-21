@@ -5,7 +5,7 @@ export interface Observation {
   source_id: string; confidence: number | null; evidence_state: string; provenance: Provenance[]; freshness: string;
 }
 export interface SourceStatus {
-  id: string; name: string; category: string; scope: string; endpoint: string; status: string; freshness: string;
+  credential_state?: string; coverage_metadata?: Record<string,unknown>; id: string; name: string; category: string; scope: string; endpoint: string; status: string; freshness: string;
   last_success_at: string | null; last_failure_at: string | null; last_checked_at: string | null; data_at: string | null;
   consecutive_failures: number; success_rate: number | null; median_latency_ms: number | null; sample_count: number;
   last_error_category: string | null; last_http_status: number | null; record_count: number | null; next_check_at: string;

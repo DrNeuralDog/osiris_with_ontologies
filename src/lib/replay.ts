@@ -28,7 +28,7 @@ export function normalizeReplayBounds(b:{west:number;south:number;east:number;no
 export function replayInvestigation(focus:InvestigationMapFocus|null,s:ReplayState):InvestigationMapFocus|null {if(!focus?.track)return null;return {...focus,points:(focus.points||[]).filter(p=>p.at&&Date.parse(p.at)>=s.from&&Date.parse(p.at)<=Math.min(s.at,s.to))};}
 
 export function historyReplayItem(o:Observation,objectType:string,name:string):ReplayItem|undefined {
- const mapping:Record<string,string>={CONFLICT_REPORT:'conflict',POSITION:objectType,FIRE:'fire',EARTHQUAKE:'earthquake',SEVERE_WEATHER:'weather',WEATHER:'weather',NEWS_EVENT:'news',CYBER_INDICATOR:'cyber',REFERENCE_LOCATION:'infrastructure'};
+ const mapping:Record<string,string>={OFFICIAL_ALERT:'conflict',HEARD_EXPLOSION:'conflict',CONFLICT_REPORT:'conflict',POSITION:objectType,FIRE:'fire',EARTHQUAKE:'earthquake',SEVERE_WEATHER:'weather',WEATHER:'weather',NEWS_EVENT:'news',CYBER_INDICATOR:'cyber',REFERENCE_LOCATION:'infrastructure'};
  const domain=mapping[o.event_type];
  if(!REPLAY_DOMAINS.includes(domain as ReplayDomain))return undefined;
  return {id:o.id,object_id:o.object_id,name,domain:domain as ReplayDomain,from:o.timeline_at,to:new Date(Date.parse(o.timeline_at)+1).toISOString(),lat:o.lat,lon:o.lon,observation:o};
