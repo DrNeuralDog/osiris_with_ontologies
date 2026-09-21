@@ -15,7 +15,7 @@
  *   - Rate-limited per client IP
  */
 
-const { fetchSource } = require('./ontology/fetch-source');
+const { fetchSource, reportSource } = require('./ontology/fetch-source');
 const { AsyncLocalStorage } = require('node:async_hooks');
 const context = new AsyncLocalStorage();
 
@@ -64,6 +64,7 @@ function parseCsv(text) {
 }
 
 async function loadSanctions() {
+  const started=Date.now();
   console.log('[INTEL] Loading OpenSanctions OFAC SDN...');
   try {
     const res = await fetchSource(SDN_CSV_URL, {
@@ -111,8 +112,10 @@ async function loadSanctions() {
     }
 
     sanctionsIndex = { entries, byNorm, fetchedAt: Date.now() };
+    reportSource('data.opensanctions.org',{ok:true,record_count:entries.length,latency_ms:Date.now()-started});
     console.log(`[INTEL] Sanctions index loaded: ${entries.length} entities, ${byNorm.size} name keys`);
   } catch (e) {
+    reportSource('data.opensanctions.org',{ok:false,error_category:'DOWNLOAD_OR_PARSE',latency_ms:Math.min(300000,Date.now()-started)});
     console.error('[INTEL] Sanctions load failed:', e.message, e.cause?.code || '');
     if (sanctionsIndex.entries.length > 0) {
       console.log('[INTEL] Keeping stale index');

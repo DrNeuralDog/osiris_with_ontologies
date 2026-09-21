@@ -15,6 +15,8 @@
  *                  rather than dropping the layer to zero cameras.
  */
 
+import { recordSourceCheck } from './source-health-reporter';
+
 interface Entry<T> {
   data: T[];
   expiresAt: number;
@@ -59,8 +61,12 @@ export function cachedSource<T>(
     if (entry?.inflight) return entry.inflight;
 
     const inflight = (async () => {
+      const category = key.startsWith('cctv:') ? 'cctv' : /^(wire|telegram):/.test(key) ? 'news' : key.startsWith('weather:') ? 'weather' : 'api';
+      const source = { id: key, name: key, category, endpoint: `catalog:${key}` };
       try {
         const data = await fetcher();
+        const timestamps = data.map(row => { const item = row as Record<string, unknown>; const at = item?.publishedAt || item?.date; return typeof at === 'string' && Number.isFinite(Date.parse(at)) ? new Date(at).toISOString() : null; }).filter((s): s is string => !!s).sort();
+        recordSourceCheck({ source, sample: { ok: data.length > 0 || !['cctv', 'news'].includes(category), record_count: data.length, data_at: timestamps.at(-1), latency_ms: Math.min(300000, Date.now() - now), error_category: data.length ? undefined : 'EMPTY_CATALOG' } });
         // An empty result is treated as a failed refresh: keep whatever we had.
         if (data.length === 0 && entry?.data.length) {
           store.set(key, { data: entry.data, expiresAt: now + ttlMs, inflight: null });
@@ -69,6 +75,7 @@ export function cachedSource<T>(
         store.set(key, { data, expiresAt: now + ttlMs, inflight: null });
         return data;
       } catch (e) {
+        recordSourceCheck({ source, sample: { ok: false, latency_ms: Math.min(300000, Date.now() - now), error_category: e instanceof Error && /^HTTP \d{3}$/.test(e.message) ? e.message.replace(' ', '_') : 'FETCH_OR_PARSE' } });
         if (entry?.data.length) {
           console.warn(`[OSIRIS] ${key} refresh failed — serving ${entry.data.length} cached cameras`);
           // Retry sooner than a full TTL, but don't hammer the failing upstream.

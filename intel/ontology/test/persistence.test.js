@@ -133,11 +133,12 @@ test('expanding an unresolved legacy company adds candidates without changing or
 });
 test('observations are time-scoped, deduplicated and preserve reported rather than invented measurement time', async () => {
   const [id] = await store.ingest([object('observed-plane', 'aircraft')]);
-  const input = { object_id: id, lat: 55.75, lon: 37.61, observed_at: '2026-09-21T10:00:00Z', provenance: prov('feed-row')[0] };
+  const input = { object_id: id, lat: 55.75, lon: 37.61, observed_at: new Date(Date.now()-60000).toISOString(), provenance: prov('feed-row')[0] };
   const first = await recordObservation(store, input), second = await recordObservation(store, input);
   assert.equal(first.observation_id, second.observation_id);
-  const graph = await store.graph(id, { depth: 2 }); assert.equal(graph.nodes.length, 3); assert.equal(graph.links.length, 2);
-  assert.equal((await store.get(first.observation_id)).provenance[0].kind, 'reported');
+  const graph = await store.graph(id, { depth: 2 }); assert.equal(graph.nodes.length, 1); assert.equal(graph.links.length, 0);
+  const history=await new (require('../../intelligence/history').HistoryService)(store).query(id,{location_only:'true'});
+  assert.equal(history.items[0].provenance[0].kind,'reported');
   await assert.rejects(recordObservation(store, { ...input, observed_at: undefined }), /time required/);
   await assert.rejects(recordObservation(store, { ...input, lat: 91 }), /coordinates/);
 });

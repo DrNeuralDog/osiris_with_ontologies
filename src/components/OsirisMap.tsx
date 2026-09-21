@@ -15,6 +15,8 @@ import MapControls from '@/components/MapControls';
 import LiveNewsPreviews, { type PreviewFeed } from '@/components/LiveNewsPreviews';
 import { attachTerrain, type TerrainStatus } from '@/lib/map-terrain';
 
+import { investigationFeatures } from '@/lib/investigation-map';
+import type { InvestigationMapFocus } from '@/lib/intelligence';
 import { applyMapProjection } from '@/lib/map-projection';
 
 /** The catalogue fields the satellite layer and its popup actually read. */
@@ -31,6 +33,8 @@ interface SatelliteRow {
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface OsirisMapProps {
+  investigation?: InvestigationMapFocus | null;
+  healthyCameraIds?: ReadonlySet<string> | null;
   data: any;
   activeLayers: Record<string, boolean>;
   onEntityClick?: (entity: any) => void;
@@ -157,7 +161,7 @@ interface AlertPinFeature {
   properties: AlertPinProps;
 }
 
-function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, alertPinIds = null, projection = 'globe', terrainEnabled = false, terrainRetry = 0, terrainFocus = 0, onTerrainStatusChange, mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', drawnPolygons = [], arcgisLayers = [], drawMode = null, onDrawComplete, onDrawProgress, onDrawCancel, drawCommand = null, onMapCenter, route = null, userLocation = null, followUser = false, onFollowInterrupt, navigating = false, aircraftAirports = {} }: OsirisMapProps) {
+function OsirisMap({ investigation = null, healthyCameraIds = null, data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, alertPinIds = null, projection = 'globe', terrainEnabled = false, terrainRetry = 0, terrainFocus = 0, onTerrainStatusChange, mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', drawnPolygons = [], arcgisLayers = [], drawMode = null, onDrawComplete, onDrawProgress, onDrawCancel, drawCommand = null, onMapCenter, route = null, userLocation = null, followUser = false, onFollowInterrupt, navigating = false, aircraftAirports = {} }: OsirisMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -389,6 +393,9 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
 
       const sources = ['flights','military','jets','private-fl','satellites','earthquakes','gdelt','day-night','cctv','fires','weather','infrastructure','maritime','maritime-choke','maritime-ships','live-news','conflict-zones', 'war-alerts-targets', 'war-alerts-lines', 'balloons', 'radiation', 'ip-sweep-devices', 'ip-sweep-pulse', 'ip-sweep-connections', 'scan-targets', 'sdk-entities', 'sdk-links', 'malware-nodes', 'malware-new', 'network-mesh', 'cyber-heads', 'gdelt-events', 'cf-outages', 'cf-attacks', 'alert-pins'];
       sources.forEach(s => map.addSource(s, { type: 'geojson', data: EMPTY_FC }));
+      map.addSource('investigation', { type: 'geojson', data: EMPTY_FC });
+      map.addLayer({ id: 'investigation-lines', type: 'line', source: 'investigation', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': '#D4AF37', 'line-width': 3, 'line-dasharray': [2, 2] } });
+      map.addLayer({ id: 'investigation-points', type: 'circle', source: 'investigation', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-color': '#00E5FF', 'circle-radius': 7, 'circle-stroke-width': 2, 'circle-stroke-color': '#D4AF37' } });
 
       // ── FLIGHT ROUTE VISUALIZATION SOURCES & LAYERS ──
 
@@ -1767,6 +1774,8 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
     if (src) src.setData({ type: 'FeatureCollection', features });
   }, []);
 
+  useEffect(() => { if (mapReady) setGeo('investigation', investigationFeatures(investigation)); }, [mapReady, investigation, setGeo]);
+
   const setVis = useCallback((ids: string[], visible: boolean) => {
     const map = mapRef.current;
     if (!map) return;
@@ -2106,8 +2115,8 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
 
   useEffect(() => {
     if (!mapReady) return;
-    setGeo('cctv', activeLayers.cctv && data.cameras ? data.cameras.map((c: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [c.lng, c.lat] }, properties: { id: c.id, name: c.name, city: c.city, country: c.country, source: c.source, feed_url: c.feed_url, stream_url: c.stream_url, stream_type: c.stream_type, external_url: c.external_url } })) : []);
-  }, [mapReady, data.cameras, activeLayers.cctv, setGeo]);
+    setGeo('cctv', activeLayers.cctv && data.cameras ? data.cameras.filter((c: { id: string }) => !healthyCameraIds || healthyCameraIds.has(String(c.id))).map((c: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [c.lng, c.lat] }, properties: { id: c.id, name: c.name, city: c.city, country: c.country, source: c.source, feed_url: c.feed_url, stream_url: c.stream_url, stream_type: c.stream_type, external_url: c.external_url } })) : []);
+  }, [mapReady, data.cameras, activeLayers.cctv, healthyCameraIds, setGeo]);
 
   useEffect(() => {
     if (!mapReady) return;

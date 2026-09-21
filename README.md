@@ -21,6 +21,9 @@
 
 ## Overview
 
+Новый [Intelligence layer](docs/Intelligence.md): persistent HISTORY, SOURCE + CONFIDENCE, SOURCE HEALTH и deterministic CORRELATIONS поверх Ontology V1.
+
+
 Этот форк добавляет **Persistent Ontology V1**: PostgreSQL, типизированные связи,
 provenance и интерактивный Graph Explorer. Запуск: `docker compose up -d --build`.
 Инструкция, архитектура и API: [docs/Ontology.md](docs/Ontology.md).

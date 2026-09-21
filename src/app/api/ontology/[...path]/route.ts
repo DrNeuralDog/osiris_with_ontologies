@@ -6,7 +6,7 @@ type Context = { params: Promise<{ path: string[] }> };
 export async function proxyOntology(req: Request, context: Context) {
   const { path } = await context.params;
   const route = path.join('/');
-  const allowed = req.method === 'GET' ? new RegExp(`^(types|objects|objects/${UUID}(/(graph|relationships))?)$`).test(route) : req.method === 'POST' && new RegExp(`^(resolve|objects/${UUID}/expand)$`).test(route);
+  const allowed = req.method === 'GET' ? new RegExp(`^(types|objects|objects/${UUID}(/(graph|relationships|history|provenance))?)$`).test(route) : req.method === 'POST' && new RegExp(`^(resolve|objects/${UUID}/expand)$`).test(route);
   if (!allowed) return NextResponse.json({ error: 'Unknown ontology endpoint' }, { status: 404 });
   if (isRateLimited(`ontology:${getClientIp(req)}`, 90, 60000)) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   if (req.method === 'POST') {
@@ -21,7 +21,7 @@ export async function proxyOntology(req: Request, context: Context) {
     }
   }
   const params = new URL(req.url).searchParams;
-  const keys = new Set(['q', 'type', 'namespace', 'value', 'limit', 'depth', 'max_nodes', 'max_edges', 'direction']);
+  const keys = new Set(['q', 'type', 'namespace', 'value', 'limit', 'depth', 'max_nodes', 'max_edges', 'direction', 'from', 'to', 'order', 'cursor', 'location_only', 'property']);
   for (const [key, value] of params) if (!keys.has(key) || params.getAll(key).length > 1 || value.length > 300) return NextResponse.json({ error: 'Invalid query' }, { status: 400 });
   try {
     let body: string | undefined;

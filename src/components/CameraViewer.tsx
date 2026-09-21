@@ -19,6 +19,13 @@ export default function CameraViewer({ camera, onClose, onLocate }: CameraViewer
   const [retryCount, setRetryCount] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [healthCheck, setHealthCheck] = useState<{ id: string; text: string; pending: boolean } | null>(null);
+  async function checkHealth() {
+    const id = String(camera?.id || ''); if (!id) return;
+    setHealthCheck({ id, text: 'Checking catalog frame…', pending: true });
+    try { const response = await fetch(`/api/intelligence/camera-check?id=${encodeURIComponent(id)}`, { method: 'POST', signal: AbortSignal.timeout(30000) }); const result = await response.json(); setHealthCheck({ id, pending: false, text: `${result.status || 'Unavailable'}${result.error ? ` · ${result.error}` : ''}${result.cached ? ' · cached check' : ''}` }); }
+    catch { setHealthCheck({ id, pending: false, text: 'Camera health check unavailable' }); }
+  }
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -239,6 +246,7 @@ export default function CameraViewer({ camera, onClose, onLocate }: CameraViewer
               </div>
             </div>
 
+          <div className="px-3 py-2 flex flex-wrap items-center gap-2 text-[10px] font-mono border-b border-white/10"><button className="px-2 py-1 border border-[var(--gold-primary)]/40 rounded text-[var(--gold-primary)] disabled:opacity-40" onClick={() => void checkHealth()} disabled={!camera.id || healthCheck?.id === String(camera.id) && healthCheck.pending}>Check source health</button><span role="status" className="text-[var(--text-secondary)]">{healthCheck?.id === String(camera.id) ? healthCheck.text : 'Individual camera health: unknown until checked'}</span></div>
           {/* Camera Feed */}
           <div className={`relative bg-[#020202] ${fullscreen ? 'flex-1 overflow-hidden' : 'aspect-video max-h-[35vh] md:max-h-none'}`}>
             {/* Tactical CRT Overlay */}

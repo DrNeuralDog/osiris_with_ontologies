@@ -1,7 +1,7 @@
 const { isIP } = require('node:net');
 
 const OBJECT_TYPES = ['aircraft', 'vessel', 'company', 'person', 'country', 'ip', 'location', 'organization', 'event', 'observation', 'infrastructure', 'domain', 'satellite', 'airport', 'port'];
-const LINK_TYPES = ['OPERATED_BY', 'OWNED_BY', 'REGISTERED_IN', 'HEADQUARTERED_IN', 'CEO', 'PARENT_ORG', 'EMPLOYED_BY', 'NATIONALITY', 'MEMBER_OF', 'LOCATED_IN', 'OBSERVED_AT', 'ASSOCIATED_WITH', 'SANCTIONS_MATCH'];
+const LINK_TYPES = ['OPERATED_BY', 'OWNED_BY', 'REGISTERED_IN', 'HEADQUARTERED_IN', 'CEO', 'PARENT_ORG', 'EMPLOYED_BY', 'NATIONALITY', 'MEMBER_OF', 'LOCATED_IN', 'OBSERVED_AT', 'ASSOCIATED_WITH', 'SANCTIONS_MATCH', 'ANNOUNCED_BY', 'HOSTED_BY', 'AFFECTS'];
 class InputError extends Error { constructor(message, status = 400) { super(message); this.status = status; } }
 function check(ok, message) { if (!ok) throw new InputError(message); }
 function text(value, name, max = 200) {
@@ -30,10 +30,10 @@ function identifier(namespace, raw) {
 function provenance(raw) {
   check(raw && typeof raw === 'object', 'Provenance required');
   const kind = raw.kind || 'reported';
-  check(['observed', 'reported', 'derived', 'inferred'].includes(kind), 'Invalid evidence kind');
+  check(['observed', 'reported', 'imported', 'derived', 'inferred'].includes(kind), 'Invalid evidence kind');
   const url = raw.url == null ? null : text(raw.url, 'source URL', 2000);
   if (url) { let parsed; try { parsed = new URL(url); } catch { throw new InputError('Invalid source URL'); } check(['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password, 'Invalid source URL'); }
-  return { provider: text(raw.provider, 'provider', 100), source_id: raw.source_id == null ? null : text(raw.source_id, 'source id', 500), url, observed_at: timestamp(raw.observed_at), fetched_at: timestamp(raw.fetched_at) || new Date().toISOString(), confidence: confidence(raw.confidence), kind, metadata: jsonObject(raw.metadata) };
+  return { provider: text(raw.provider, 'provider', 100), source_id: raw.source_id == null ? null : text(raw.source_id, 'source id', 500), source_record_id: raw.source_record_id == null ? null : text(raw.source_record_id,'source record id',500), extraction_method: raw.extraction_method == null ? null : text(raw.extraction_method,'extraction method',300), confidence_basis: raw.confidence_basis == null ? null : text(raw.confidence_basis,'confidence basis',500), url, observed_at: timestamp(raw.observed_at), fetched_at: timestamp(raw.fetched_at) || new Date().toISOString(), confidence: confidence(raw.confidence), kind, metadata: jsonObject(raw.metadata) };
 }
 function objectInput(raw) {
   check(raw && typeof raw === 'object', 'Object required');

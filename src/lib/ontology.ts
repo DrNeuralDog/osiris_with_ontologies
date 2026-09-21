@@ -1,7 +1,8 @@
 export interface Provenance {
   provider: string; source_id: string | null; url: string | null;
   observed_at: string | null; fetched_at: string; confidence: number | null;
-  kind: 'observed' | 'reported' | 'derived' | 'inferred'; metadata: Record<string, unknown>;
+  kind: 'observed' | 'reported' | 'derived' | 'inferred' | 'imported'; metadata: Record<string, unknown>;
+  source_record_id?: string | null; extraction_method?: string | null; confidence_basis?: string | null;
 }
 export interface OntologyObject {
   id: string; type: string; canonical_name: string;

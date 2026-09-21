@@ -3,27 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { type ForceGraphMethods, type NodeObject } from 'react-force-graph-2d';
 import { X, Crosshair, RotateCcw, Search, Network, LoaderCircle } from 'lucide-react';
-import { OBJECT_COLORS, mergeGraph, ontologyRequest, type InvestigationSeed, type OntologyGraph, type OntologyObject, type OntologyLink, type Provenance } from '@/lib/ontology';
+import EvidenceView from './EvidenceView';
+import ObjectHistory from './ObjectHistory';
+import type { InvestigationMapFocus } from '@/lib/intelligence';
+import { OBJECT_COLORS, mergeGraph, ontologyRequest, type InvestigationSeed, type OntologyGraph, type OntologyObject, type OntologyLink } from '@/lib/ontology';
 
 type GraphNode = NodeObject<OntologyObject>;
 const buttonClass = 'px-2 py-1.5 rounded border border-[var(--border-primary)] hover:border-[var(--gold-primary)] disabled:opacity-40 text-xs';
 const empty: OntologyGraph = { root_id: '', nodes: [], links: [], truncated: false };
-const safeUrl = (url: string | null) => url && /^https?:\/\//i.test(url) ? url : undefined;
 const tooltip = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-function Evidence({ items }: { items: Provenance[] }) {
-  return <div className="space-y-2">{items.length === 0 && <p>Provenance unavailable</p>}{items.map((p, index) => <div key={`${p.provider}:${p.source_id}:${index}`} className="p-2 rounded border border-[var(--border-primary)] text-[11px] break-words">
-    <div className="flex justify-between gap-2"><strong>{p.provider}</strong><span className={p.kind === 'inferred' || p.kind === 'derived' ? 'text-amber-400' : 'text-[var(--cyan-primary)]'}>{p.kind}</span></div>
-    <div>{p.source_id}</div>
-    <div>Confidence: {p.confidence == null ? 'not supplied' : `${Math.round(p.confidence * 100)}%`}</div>
-    {p.observed_at && <div>Observed: {new Date(p.observed_at).toLocaleString()}</div>}
-    <div>Fetched: {new Date(p.fetched_at).toLocaleString()}</div>
-    {safeUrl(p.url) && <a href={safeUrl(p.url)} target="_blank" rel="noopener noreferrer" className="text-[var(--gold-primary)] underline">Open source ↗</a>}
-    {Object.keys(p.metadata).length > 0 && <details><summary className="cursor-pointer mt-1">Evidence metadata</summary><pre className="whitespace-pre-wrap text-[10px] mt-1">{JSON.stringify(p.metadata, null, 2)}</pre></details>}
-  </div>)}</div>;
-}
-
-export default function EntityGraphPanel({ seed, onClose }: { seed?: InvestigationSeed; onClose: () => void }) {
+export default function EntityGraphPanel({ seed, objectId, onMap, onClose }: { seed?: InvestigationSeed; objectId?: string; onMap?: (focus: InvestigationMapFocus) => void; onClose: () => void }) {
+  const [detailTab, setDetailTab] = useState<'details' | 'history'>('details');
   const [graph, setGraph] = useState<OntologyGraph>(empty);
   const [selected, setSelected] = useState<string>('');
   const [selectedLink, setSelectedLink] = useState<OntologyLink | null>(null);
@@ -82,6 +73,7 @@ export default function EntityGraphPanel({ seed, onClose }: { seed?: Investigati
     finally { if (generation.current === version) { lock.current = false; setBusy(false); } }
   }, []);
   useEffect(() => { if (seed) void run(signal => ontologyRequest('resolve', seed, signal), true); }, [seed, run]);
+  useEffect(() => { if (objectId) void run(signal => ontologyRequest(`objects/${objectId}/graph`, undefined, signal), true); }, [objectId, run]);
 
   const expand = (node: OntologyObject) => {
     setSelected(node.id); setSelectedLink(null);
@@ -114,7 +106,7 @@ export default function EntityGraphPanel({ seed, onClose }: { seed?: Investigati
       <button ref={closeButton} className={buttonClass} onClick={onClose} aria-label="Close graph"><X size={16} /></button>
     </header>
     <form onSubmit={e => { e.preventDefault(); void search(); }} className="flex flex-wrap gap-2 p-3 border-b border-[var(--border-primary)]">
-      <select aria-label="Object type" value={type} onChange={e => setType(e.target.value)} className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs p-2">{['company', 'person', 'country', 'aircraft', 'vessel', 'ip', 'organization', 'location', 'event'].map(t => <option key={t}>{t}</option>)}</select>
+      <select aria-label="Object type" value={type} onChange={e => setType(e.target.value)} className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs p-2">{['company', 'person', 'country', 'aircraft', 'vessel', 'ip', 'organization', 'location', 'event', 'infrastructure', 'airport', 'port'].map(t => <option key={t}>{t}</option>)}</select>
       <input aria-label="Object name or identifier" value={query} onChange={e => setQuery(e.target.value)} placeholder="Name, Wikidata QID, ICAO24, MMSI or IP…" className="flex-1 min-w-36 bg-transparent border border-[var(--border-primary)] rounded px-2 text-xs" />
       <button disabled={busy || !query.trim()} className={buttonClass} title="Search saved objects"><Search size={15} /></button>
       <button type="button" disabled={busy || !query.trim()} className={buttonClass} onClick={() => void run(signal => ontologyRequest('resolve', { type, id: query.trim() }, signal), true)}>Resolve source</button>
@@ -155,13 +147,13 @@ export default function EntityGraphPanel({ seed, onClose }: { seed?: Investigati
       </div>
       <aside className="w-full md:w-80 max-h-[40vh] md:max-h-none overflow-y-auto border-t md:border-t-0 md:border-l border-[var(--border-primary)] p-3 space-y-3">
         <div className="flex flex-wrap gap-2 text-[10px]">{[...new Set(graph.nodes.map(n => n.type))].map(t => <span key={t} style={{ color: OBJECT_COLORS[t] || '#90A4AE' }}>● {t}</span>)}</div>
-        {selectedLink ? <><button className={buttonClass} onClick={() => setSelectedLink(null)}>← Object details</button><h3 className="text-sm text-[var(--gold-primary)]">{selectedLink.link_type}</h3><p className="text-xs">{graph.nodes.find(n => n.id === selectedLink.source)?.canonical_name} → {graph.nodes.find(n => n.id === selectedLink.target)?.canonical_name}</p><p className="text-xs">Confidence: {selectedLink.confidence == null ? 'not supplied' : `${Math.round(selectedLink.confidence * 100)}%`}</p>{(selectedLink.valid_from || selectedLink.valid_to) && <p className="text-xs">Valid: {selectedLink.valid_from || '?'} — {selectedLink.valid_to || '?'}</p>}<pre className="text-[11px] whitespace-pre-wrap break-words">{JSON.stringify(selectedLink.properties, null, 2)}</pre><Evidence items={selectedLink.provenance} /></> : selectedObject ? <>
+        {selectedLink ? <><button className={buttonClass} onClick={() => setSelectedLink(null)}>← Object details</button><h3 className="text-sm text-[var(--gold-primary)]">{selectedLink.link_type}</h3><p className="text-xs">{graph.nodes.find(n => n.id === selectedLink.source)?.canonical_name} → {graph.nodes.find(n => n.id === selectedLink.target)?.canonical_name}</p><p className="text-xs">Confidence: {selectedLink.confidence == null ? 'not supplied' : `${Math.round(selectedLink.confidence * 100)}%`}</p>{(selectedLink.valid_from || selectedLink.valid_to) && <p className="text-xs">Valid: {selectedLink.valid_from || '?'} — {selectedLink.valid_to || '?'}</p>}<pre className="text-[11px] whitespace-pre-wrap break-words">{JSON.stringify(selectedLink.properties, null, 2)}</pre><EvidenceView items={selectedLink.provenance} /></> : selectedObject ? <>
           <h3 className="text-sm text-[var(--gold-primary)]">{selectedObject.canonical_name}</h3><p className="text-xs">{selectedObject.type}{selectedObject.id === graph.root_id ? ' · ROOT' : ''}</p>
           <button disabled={busy} className={buttonClass} onClick={() => expand(selectedObject)}>Expand relationships</button>
           <button disabled={busy} className={`${buttonClass} ml-1`} onClick={() => void run(signal => ontologyRequest(`objects/${selectedObject.id}/graph`, undefined, signal), true)}>Make root</button>
           <div className="text-[10px] break-all text-[var(--text-secondary)]">{selectedObject.id}</div>
-          <details open><summary className="cursor-pointer text-xs">Properties & identifiers</summary><pre className="text-[11px] whitespace-pre-wrap break-words py-2">{JSON.stringify({ external_ids: selectedObject.external_ids, ...selectedObject.properties }, null, 2)}</pre></details>
-          <details open><summary className="cursor-pointer text-xs mb-2">Provenance (latest 50)</summary><Evidence items={selectedObject.provenance} /></details>
+          <div className="flex gap-2"><button className={buttonClass} aria-pressed={detailTab === 'details'} onClick={() => setDetailTab('details')}>DETAILS / EVIDENCE</button><button className={buttonClass} aria-pressed={detailTab === 'history'} onClick={() => setDetailTab('history')}>HISTORY</button></div>
+          {detailTab === 'history' ? <ObjectHistory key={selectedObject.id} objectId={selectedObject.id} onMap={onMap} /> : <><details open><summary className="cursor-pointer text-xs">Properties & identifiers</summary><pre className="text-[11px] whitespace-pre-wrap break-words py-2">{JSON.stringify({ external_ids: selectedObject.external_ids, ...selectedObject.properties }, null, 2)}</pre></details><details open><summary className="cursor-pointer text-xs mb-2">Provenance (latest 50) / property evidence</summary><EvidenceView items={selectedObject.provenance} /></details></>}
           <div className="text-xs space-y-1">{graph.links.filter(l => l.source === selectedObject.id || l.target === selectedObject.id).map(l => <button className="block text-left text-[var(--cyan-primary)] hover:underline" key={l.id} onClick={() => setSelectedLink(l)}>{l.source === selectedObject.id ? '→' : '←'} {l.link_type} · {graph.nodes.find(n => n.id === (l.source === selectedObject.id ? l.target : l.source))?.canonical_name}</button>)}</div>
         </> : <p className="text-xs text-[var(--text-secondary)]">Select a node or relationship to inspect its evidence.</p>}
         <details><summary className="cursor-pointer text-xs">Loaded objects · keyboard navigation</summary>{graph.nodes.map(n => <button disabled={busy} className="block text-left text-xs py-1 hover:underline" key={n.id} onClick={() => expand(n)}>{n.canonical_name} · {n.type}</button>)}</details>

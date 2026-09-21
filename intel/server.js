@@ -5,6 +5,9 @@ const { OntologyService, resolveInput } = require('./ontology/sources');
 const { ontologyRoutes } = require('./ontology/routes');
 const { InputError } = require('./ontology/model');
 const legacy = require('./resolvers');
+const {intelligenceRoutes}=require('./intelligence/routes');
+const {IntelligenceWorker}=require('./intelligence/worker');
+const {setSourceObserver}=require('./ontology/fetch-source');
 function createApp(store, service = new OntologyService(store)) {
   const app = express(), rateMap = new Map();
   let active = 0;
@@ -31,6 +34,7 @@ function createApp(store, service = new OntologyService(store)) {
     res.set('Cache-Control', 'no-store'); next();
   });
   app.use('/ontology', ontologyRoutes(store, service));
+  app.use('/intelligence',intelligenceRoutes(store));
   app.get('/resolve', async (req, res) => {
     const type = typeof req.query.type === 'string' ? req.query.type.toLowerCase().trim() : '';
     if (!Object.hasOwn(legacy.RESOLVERS, type)) throw new InputError('Invalid type');
@@ -59,13 +63,18 @@ function createApp(store, service = new OntologyService(store)) {
 async function boot() {
   const store = OntologyStore.connect();
   await store.migrate();
+  const worker=new IntelligenceWorker(store);
+  const sourceNames={'www.wikidata.org':'Wikidata entity API','query.wikidata.org':'Wikidata SPARQL','data.opensanctions.org':'OpenSanctions CSV','ip-api.com':'IP geolocation','stat.ripe.net':'RIPE network data'};
+  for(const [host,name]of Object.entries(sourceNames))await worker.health.register({id:`ontology:${host}`,name,category:'ontology',endpoint:host});
+  setSourceObserver((host,sample)=>worker.health.record(`ontology:${host}`,sample).catch(e=>console.warn('[health]',e.message)));
   const server = createApp(store).listen(process.env.INTEL_PORT || 4000, '0.0.0.0', () => console.log('[INTEL] Persistent ontology ready'));
+  if(process.env.INTELLIGENCE_WORKER!=='0')await worker.start();
   void legacy.loadSanctions();
   // Retry a failed initial download without waiting a whole day; keep fresh indexes for 24h.
   const refresh = setInterval(() => {
     if (Date.now() - legacy.getStats().sanctions_loaded_at >= 24 * 60 * 60 * 1000) void legacy.loadSanctions();
   }, 30 * 60 * 1000);
-  for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => { clearInterval(refresh); server.close(() => store.pool.end().then(() => process.exit(0))); });
+  for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => { clearInterval(refresh);worker.stop(); server.close(() => store.pool.end().then(() => process.exit(0))); });
 }
 if (require.main === module) boot().catch(error => { console.error('[INTEL] Startup failed:', error.message); process.exit(1); });
 module.exports = { createApp };

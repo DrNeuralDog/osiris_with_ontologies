@@ -1,3 +1,4 @@
+import { trackedFetch as fetch } from '@/lib/source-health-reporter';
 /**
  * OSIRIS — Stealth Fetch Utility
  * Generates randomized HTTP headers to distribute API requests

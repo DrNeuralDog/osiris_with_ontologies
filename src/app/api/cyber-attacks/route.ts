@@ -1,3 +1,4 @@
+import { trackedFetch as fetch } from '@/lib/source-health-reporter';
 import { NextResponse } from 'next/server';
 import {
   parseFeodoBlocklist,

@@ -27,6 +27,9 @@ import WorldRemote from '@/components/WorldRemote';
 import ArcGISPanel from '@/components/ArcGISPanel';
 import { mapInvestigationSeed, type InvestigationSeed } from '@/lib/ontology';
 const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'), { ssr: false });
+const SourceHealthPanel = dynamic(() => import('@/components/SourceHealthPanel'), { ssr: false });
+const CorrelationsPanel = dynamic(() => import('@/components/CorrelationsPanel'), { ssr: false });
+import { intelligenceRequest, type InvestigationMapFocus, type Page, type SourceStatus } from '@/lib/intelligence';
 const OsirisMap = dynamic(() => import('@/components/OsirisMap'), { ssr: false });
 const LayerPanel = dynamic(() => import('@/components/LayerPanel'));
 const SpaceCam = dynamic(() => import('@/components/SpaceCam'), { ssr: false });
@@ -148,8 +151,15 @@ const newsTransform = (d: { news?: unknown[]; sources?: unknown[]; timestamp?: s
 export default function Dashboard() {
   const [graphOpen, setGraphOpen] = useState(false);
   const [graphSeed, setGraphSeed] = useState<InvestigationSeed>();
+  const [graphObjectId, setGraphObjectId] = useState<string>();
+  const [intelPanel, setIntelPanel] = useState<'health' | 'correlations' | null>(null);
+  const [investigation, setInvestigation] = useState<InvestigationMapFocus | null>(null);
+  const [healthyOnly, setHealthyOnly] = useState(false);
+  const [healthyCameraIds, setHealthyCameraIds] = useState<Set<string>>(new Set());
+  const [healthFilterError, setHealthFilterError] = useState('');
+  const closeIntelPanel = useCallback(() => setIntelPanel(null), []);
   const closeGraph = useCallback(() => setGraphOpen(false), []);
-  const exploreEntity = useCallback((seed: InvestigationSeed) => { setGraphSeed(seed); setGraphOpen(true); }, []);
+  const exploreEntity = useCallback((seed: InvestigationSeed) => { setGraphObjectId(undefined); setGraphSeed(seed); setGraphOpen(true); }, []);
   const dataRef = useRef<any>({});
   const [dataVersion, setDataVersion] = useState(0);
   const data = dataRef.current;
@@ -157,6 +167,18 @@ export default function Dashboard() {
   const [backendStatus, setBackendStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [mapView, setMapView] = useState({ zoom: 2.5, latitude: 20 });
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number; lng: number; zoom?: number; alertId?: string; ts: number } | null>(null);
+  const showInvestigation = useCallback((focus: InvestigationMapFocus) => { setInvestigation(focus); if (focus.objectId) { setGraphObjectId(focus.objectId); setGraphSeed(undefined); } setFlyToLocation({ lat: focus.lat, lng: focus.lng, zoom: focus.track ? 6 : 8, ts: Date.now() }); setGraphOpen(false); setIntelPanel(null); }, []);
+  const openIntelligenceObject = useCallback((id: string) => { setGraphSeed(undefined); setGraphObjectId(id); setGraphOpen(true); setIntelPanel(null); }, []);
+  useEffect(() => {
+    if (!healthyOnly) return;
+    const controller = new AbortController();
+    const refresh = async () => { try {
+      const ids = new Set<string>(); let cursor: string | null = null;
+      for (let page = 0; page < 10; page++) { const result: Page<SourceStatus> = await intelligenceRequest(`sources?scope=camera&status=HEALTHY&limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, controller.signal); for (const s of result.items) ids.add(s.endpoint); cursor = result.next_cursor; if (!cursor) break; }
+      if (!controller.signal.aborted) { setHealthyCameraIds(ids); setHealthFilterError(''); }
+    } catch (e) { if (!controller.signal.aborted) { setHealthyCameraIds(new Set()); setHealthFilterError(e instanceof Error ? e.message : 'Health filter unavailable'); } } };
+    void refresh(); const timer = setInterval(() => void refresh(), 60000); return () => { controller.abort(); clearInterval(timer); };
+  }, [healthyOnly]);
   /* The Live Alerts the feed's filters leave showing; the map pins those. */
   const [pinnedAlertIds, setPinnedAlertIds] = useState<string[] | null>(null);
   const [globalStats, setGlobalStats] = useState<any>(null);
@@ -1189,6 +1211,8 @@ export default function Dashboard() {
           onRightClick={handleRightClick} 
           onViewStateChange={setMapView} 
           flyToLocation={flyToLocation}
+          investigation={investigation}
+          healthyCameraIds={healthyOnly ? healthyCameraIds : null}
           alertPinIds={pinnedAlertIds}
           sweepData={sweepData}
           scanTargets={scanTargets}
@@ -1881,8 +1905,17 @@ export default function Dashboard() {
       />
 
       {/* ── Entity Graph Panel ── */}
-      <button onClick={() => { setGraphSeed(undefined); setGraphOpen(true); }} className="absolute left-4 bottom-24 z-[400] flex items-center gap-2 px-3 py-2 rounded border border-[var(--gold-primary)]/40 bg-[var(--bg-primary)] text-[var(--gold-primary)] text-[10px] font-mono" title="Search objects and investigate relationships"><Network size={14} /> ONTOLOGY</button>
-      {graphOpen && <EntityGraphPanel seed={graphSeed} onClose={closeGraph} />}
+      <div className="absolute left-4 bottom-24 z-[400] flex flex-col items-start gap-1 font-mono text-[10px]">
+        <button onClick={() => { setGraphObjectId(undefined); setGraphSeed(undefined); setGraphOpen(true); }} className="flex items-center gap-2 px-3 py-2 rounded border border-[var(--gold-primary)]/40 bg-[var(--bg-primary)] text-[var(--gold-primary)]" title="Search objects and investigate relationships"><Network size={14} /> ONTOLOGY</button>
+        <button className="px-3 py-2 rounded border border-[var(--gold-primary)]/40 bg-[var(--bg-primary)] text-[var(--gold-primary)]" onClick={() => setIntelPanel('health')}>SOURCE HEALTH</button>
+        <button className="px-3 py-2 rounded border border-[var(--gold-primary)]/40 bg-[var(--bg-primary)] text-[var(--gold-primary)]" onClick={() => setIntelPanel('correlations')}>CORRELATIONS</button>
+        {healthyOnly && <button onClick={() => setHealthyOnly(false)} className="bg-[var(--bg-primary)] text-cyan-300 p-2">CCTV: Healthy only ({healthyCameraIds.size}) · clear</button>}
+        {healthFilterError && healthyOnly && <span role="alert" className="max-w-64 bg-[var(--bg-primary)] text-red-300 p-2">{healthFilterError}</span>}
+        {investigation && <div className="max-w-64 bg-[var(--bg-primary)] border border-[var(--gold-primary)]/40 p-2 text-cyan-300"><p>{investigation.label}</p><p className="text-slate-400">{investigation.track ? 'Sampled positions; gaps omitted' : 'Selected related signals'}</p><button className="underline" onClick={() => setInvestigation(null)}>Clear map highlight</button>{graphObjectId && <button className="ml-2 underline" onClick={() => setGraphOpen(true)}>Reopen object</button>}</div>}
+      </div>
+      {graphOpen && <EntityGraphPanel seed={graphSeed} objectId={graphObjectId} onMap={showInvestigation} onClose={closeGraph} />}
+      {intelPanel === 'health' && <SourceHealthPanel onClose={closeIntelPanel} healthyOnly={healthyOnly} onHealthyOnly={setHealthyOnly} />}
+      {intelPanel === 'correlations' && <CorrelationsPanel onClose={closeIntelPanel} onMap={showInvestigation} onObject={openIntelligenceObject} />}
       {/* Guidance belongs over the map, where the clicking happens. */}
       {drawMode && (
         <DrawHud

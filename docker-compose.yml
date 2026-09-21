@@ -19,6 +19,8 @@ services:
       - PORT=3000
       - HOSTNAME=0.0.0.0
       - INTEL_URL=http://osiris-intel:4000
+      - INTELLIGENCE_REPORTING=1
+      - INTELLIGENCE_REPORT_KEY=${INTELLIGENCE_REPORT_KEY:-osiris-local-reports}
       - SCANNER_URL=${SCANNER_URL:-}
       - SCANNER_KEY=${SCANNER_KEY:-}
       - FIRMS_API_KEY=${FIRMS_API_KEY:-}
@@ -85,6 +87,11 @@ services:
       PGDATABASE: osiris
       PGUSER: osiris
       PGPASSWORD: ${ONTOLOGY_DB_PASSWORD:-osiris-local-dev}
+      OSIRIS_INTERNAL_URL: http://osiris:3000
+      INTELLIGENCE_REPORT_KEY: ${INTELLIGENCE_REPORT_KEY:-osiris-local-reports}
+      HISTORY_TELEMETRY_DAYS: ${HISTORY_TELEMETRY_DAYS:-14}
+      HISTORY_RETENTION_DAYS: ${HISTORY_RETENTION_DAYS:-90}
+      INTELLIGENCE_WORKER: ${INTELLIGENCE_WORKER:-1}
     depends_on:
       osiris-postgres:
         condition: service_healthy

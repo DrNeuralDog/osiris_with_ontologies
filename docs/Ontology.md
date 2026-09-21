@@ -101,7 +101,7 @@ Invoke-RestMethod "http://localhost:3000/api/ontology/objects/$($g.root_id)/grap
 
 Импорт через локальный intel: `objects` — массив `{type, canonical_name, external_ids:[{namespace,value}], properties, provenance:[...]}`; `links` — массив `{source:0,target:1,link_type,properties,confidence,valid_from,valid_to,provenance:[...]}`. `source`/`target` — индексы в переданном массиве. Ответ содержит `object_ids`. Ошибка откатывает весь импорт.
 
-Observation принимает `{object_id,lat,lon,observed_at,provenance:{provider,source_id,kind,...}}`. В одной транзакции создаёт Object → OBSERVED_AT → Observation → LOCATED_IN → Location. Повтор той же записи не создаёт дубль. Без времени наблюдения запрос отклоняется: время клика на карте не выдаётся за время измерения. Автоматический поток телеметрии в V1 не включён.
+Observation принимает `{object_id,lat,lon,observed_at,provenance:{provider,source_id,kind,...}}`. После добавления [Intelligence layer](Intelligence.md) новые наблюдения сохраняются отдельно от identity в `intelligence_observations`; ответ содержит `observation_id` и `storage: history`. Старые V1 Observation/Location nodes остаются в графе и перенесены в timeline. Повтор той же записи не создаёт дубль. Без времени измерения POSITION отклоняется: время клика не выдаётся за время наблюдения. Фоновый worker собирает телеметрию уже зарегистрированных Aircraft/Vessel.
 
 Коды ошибок: 400 malformed input, 404 отсутствующий объект, 409 конфликт типов для одного ID, 413 слишком большой запрос, 429 ограничение нагрузки, 502 недоступный intel на frontend, 503 database health. Внешний сбой обогащения возвращает сохранённые сведения и `warnings`, а не стирает граф.
 

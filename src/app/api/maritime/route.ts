@@ -1,3 +1,4 @@
+import { positionTimestamp } from '@/lib/telemetry-time';
 import { NextResponse } from 'next/server';
 import WebSocket from 'ws';
 
@@ -173,6 +174,8 @@ function connectAisStream() {
         existing.speed = report.Sog;
         existing.heading = report.TrueHeading || report.Cog;
         existing.timestamp = Date.now();
+        existing.observed_at = positionTimestamp(parsed.MetaData?.time_utc);
+        existing.provider = 'AISStream';
       } 
       else if (parsed.MessageType === "ShipStaticData" && parsed.Message?.ShipStaticData) {
         const staticData = parsed.Message.ShipStaticData;

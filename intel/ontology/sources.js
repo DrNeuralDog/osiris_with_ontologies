@@ -142,9 +142,9 @@ function legacyGraph(type, id, result, root) {
     const kind = l.label === 'SANCTIONS MATCH' || type === 'aircraft' && source === 0 ? 'inferred' : 'reported';
     const provider = objects[target].provenance[0].provider;
     const link_type = labels[l.label] || 'ASSOCIATED_WITH';
-    links.push({ source, target, link_type, confidence: kind === 'inferred' ? 0.5 : null,
+    links.push({ source, target, link_type, confidence: null,
       properties: { original_relationship: l.label, ...(kind === 'inferred' ? { warning: 'Candidate based on name, callsign or registration prefix; verify independently.' } : {}) },
-      provenance: [evidence(provider, `${type}:${id}:${l.label}`, kind, { confidence: kind === 'inferred' ? 0.5 : null, metadata: { method: kind === 'inferred' ? 'legacy heuristic' : 'source report' } })] });
+      provenance: [evidence(provider, `${type}:${id}:${l.label}`, kind, { confidence: null, metadata: { method: kind === 'inferred' ? 'legacy heuristic' : 'source report' } })] });
   }
   if (result.fetched_at) {
     for (const object of objects.slice(1)) for (const p of object.provenance) p.fetched_at = result.fetched_at;
@@ -199,7 +199,7 @@ class OntologyService {
         graph.objects.push({ type: match.schema === 'Person' ? 'person' : match.schema === 'Vessel' ? 'vessel' : 'organization', canonical_name: match.name,
           external_ids: [{ namespace: 'opensanctions', value: match.id }], properties: { schema: match.schema, programs: match.programs, countries: match.countries, identity_status: 'sanctions_candidate' },
           provenance: [evidence('OpenSanctions', match.id, 'reported', { fetched_at: new Date(legacy.getStats().sanctions_loaded_at).toISOString(), url: `https://www.opensanctions.org/entities/${encodeURIComponent(match.id)}/` })] });
-        graph.links.push({ source: 0, target, link_type: 'SANCTIONS_MATCH', confidence: 0.5, properties: { candidate: true, warning: 'Name match only; this does not establish sanctions status.' }, provenance: [evidence('OSIRIS sanctions matching', match.id, 'inferred', { confidence: 0.5, metadata: { method: 'name or alias match', confirmed_identity: false } })] });
+        graph.links.push({ source: 0, target, link_type: 'SANCTIONS_MATCH', confidence: null, properties: { candidate: true, warning: 'Name match only; this does not establish sanctions status.' }, provenance: [evidence('OSIRIS sanctions matching', match.id, 'inferred', { confidence: null, metadata: { method: 'name or alias match', confirmed_identity: false } })] });
       }
     }
     if (!legacy.getStats().sanctions_loaded_at) warnings.push('Sanctions index unavailable; no sanctions conclusion can be drawn.');
@@ -241,7 +241,7 @@ class OntologyService {
     const { root } = resolveInput({ type, id, ...props });
     const graph = legacyGraph(type, id, result, root);
     // Legacy name-based relationships remain explicitly uncertain.
-    if (!root.external_ids.length) for (const l of graph.links) l.provenance = l.provenance.map(p => ({ ...p, kind: 'inferred', confidence: 0.5, metadata: { method: 'legacy name search', confirmed_identity: false } }));
+    if (!root.external_ids.length) for (const l of graph.links) l.provenance = l.provenance.map(p => ({ ...p, kind: 'inferred', confidence: null, metadata: { method: 'legacy name search', confirmed_identity: false } }));
     return (await this.store.ingest(graph.objects, graph.links))[0];
   }
 }

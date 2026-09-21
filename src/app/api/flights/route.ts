@@ -1,3 +1,5 @@
+import { trackedFetch as fetch } from '@/lib/source-health-reporter';
+import { adsbPositionTime, positionTimestamp } from '@/lib/telemetry-time';
 
 import { NextResponse } from 'next/server';
 import { stealthFetch } from '@/lib/stealthFetch';
@@ -136,7 +138,7 @@ async function fetchAdsbFiRegion(lat: number, lon: number): Promise<any[]> {
     });
     if (res.ok) {
       const data = await res.json();
-      return data.ac || [];
+      return (data.ac || []).map((row: Record<string, unknown>) => ({ ...row, observed_at: adsbPositionTime(data.now, row.seen_pos), provider: 'adsb.fi' }));
     }
     await res.body?.cancel();
   } catch {}
@@ -213,6 +215,9 @@ function classifyFlight(f: any) {
     category,
     grounded: isGrounded,
     nac_p: f.nac_p,
+    observed_at: f.observed_at || null,
+    provider: f.provider || null,
+    on_ground: typeof f.on_ground === 'boolean' ? f.on_ground : f.alt_baro === 'ground' ? true : typeof f.alt_baro === 'number' ? false : null,
     type: 'flight',
   };
 }
@@ -350,7 +355,7 @@ export async function GET() {
       if (milRes.value.ok) {
         try {
           const data = await milRes.value.json();
-          ingestAc(data.ac || [], allRaw, seenHex);
+          ingestAc((data.ac || []).map((row: Record<string, unknown>) => ({ ...row, observed_at: adsbPositionTime(data.now, row.seen_pos), provider: 'adsb.fi' })), allRaw, seenHex);
         } catch (e) {
           console.warn('[OSIRIS] adsb.fi mil parse error:', e);
         }
@@ -375,6 +380,9 @@ export async function GET() {
           if (states.length > 100) {
             osSnapshot = states.map((s: any[]) => ({
               hex: s[0],
+              observed_at: positionTimestamp(s[3]),
+              on_ground: s[8],
+              provider: 'OpenSky',
               flight: s[1]?.trim(),
               lon: s[5],
               lat: s[6],
