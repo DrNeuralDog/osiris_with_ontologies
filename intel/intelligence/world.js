@@ -1,0 +1,27 @@
+const M=require('../ontology/model');
+const {writeObservation,putLocation}=require('./history');
+const PROVIDERS={OpenStreetMap:['osm','infrastructure'],GEM:['gem','infrastructure'],'Open-Meteo':['open-meteo','weather'],GDELT:['gdelt','conflict'],'War-Tracker':['war-tracker','conflict'],'alerts.in.ua':['alerts-in-ua','conflict'],ACLED:['acled','conflict'],UCDP:['ucdp','conflict']};
+function worldInput(input,trusted=false){
+ const r=M.jsonObject(input.record),config=PROVIDERS[input.provider];M.check(config&&r.domain===config[1],'Unsupported world provider/domain');
+ const id=M.text(input.id,'stable ID',200);M.check(id.startsWith(`${config[0]}:`)&&/^[\w:.,-]+$/.test(id)&&id.length>config[0].length+1,'Invalid provider identity');
+ if(config[0]==='osm')M.check(/^osm:(node|way|relation):[1-9]\d*$/.test(id),'Invalid OSM identity');
+ if(config[0]==='open-meteo')M.check(/^open-meteo:-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(id),'Invalid weather grid identity');
+ const properties=M.jsonObject(r.properties),name=M.text(input.name||id,'name',300),at=M.timestamp(r.observed_at),fetched=M.timestamp(r.fetched_at)||new Date().toISOString();
+ const lat=r.lat??null,lon=r.lon??r.lng??null;
+ M.check(lat===null&&lon===null||typeof lat==='number'&&Number.isFinite(lat)&&Math.abs(lat)<=90&&typeof lon==='number'&&Number.isFinite(lon)&&Math.abs(lon)<=180,'Invalid coordinates');
+ M.check(['EXACT_SOURCE_COORDINATE','LOCALITY','DISTRICT','REGION','APPROXIMATE','UNKNOWN'].includes(r.location_precision),'Invalid location precision');
+ M.check(['source','representative'].includes(r.geometry_precision),'Invalid geometry precision');
+ if(r.geometry){M.check(['Point','LineString','MultiLineString','Polygon'].includes(r.geometry.type),'Unsupported geometry');let count=0;const walk=(v,depth=0)=>{M.check(Array.isArray(v)&&v.length>0&&depth<=2,'Invalid geometry');if(typeof v[0]==='number'){M.check(v.length===2&&v.every(Number.isFinite)&&Math.abs(v[0])<=180&&Math.abs(v[1])<=90,'Invalid geometry coordinate');count++;}else for(const p of v)walk(p,depth+1);};walk(r.geometry.coordinates);M.check(count<=400,'Geometry limit exceeded');}
+ const kind=r.domain==='weather'?'derived':r.domain==='conflict'?'reported':'imported';
+ const evidence=[M.provenance({provider:input.provider,source_id:config[0],source_record_id:id,url:r.url||null,observed_at:at,fetched_at:fetched,confidence:r.confidence??null,kind,extraction_method:r.extraction_method||'Source record import',metadata:{source_license:r.source_license,source_attribution:r.source_attribution,location_precision:r.location_precision,geometry_precision:r.geometry_precision,client_supplied:!trusted,confidence_basis:r.confidence==null?'Not provided':'Provider-supplied',reported_at:properties.reported_at||null}})];
+ const type=r.domain==='weather'?'location':r.domain==='conflict'?'event':['airport','port'].includes(properties.asset_kind)?properties.asset_kind:'infrastructure';
+ const eventType=r.domain==='weather'?'WEATHER':r.domain==='conflict'?'CONFLICT_REPORT':'REFERENCE_LOCATION';
+ M.check(r.domain==='infrastructure'||at,'Source timestamp required');
+ // Static records have received-time history; source edit time is not a sensor observation.
+ const data={...properties,subtype:r.subtype,location_precision:r.location_precision,geometry_precision:r.geometry_precision,geometry:r.geometry||null,source_attribution:r.source_attribution,source_license:r.source_license};
+ const event={event_type:eventType,observed_at:at,fetched_at:fetched,lat,lon,data,provenance:evidence,source_id:`world:${config[0]}`,dedup_key:id,valid_from:properties.valid_from||null,valid_to:r.domain==='weather'?new Date(Date.parse(at)+3600000).toISOString():properties.valid_to||null};
+ return {object:{type,canonical_name:name,external_ids:[{namespace:`source:${config[0]}`,value:id}],properties:{...data,lat,lon,investigation_kind:r.domain},provenance:evidence},event,lat,lon,spatialAsset:r.domain==='infrastructure'&&id.startsWith('osm:node:')&&r.geometry_precision==='source'&&r.location_precision==='EXACT_SOURCE_COORDINATE'};
+}
+async function saveWorld(store,db,parsed){const id=await store.putObject(db,parsed.object);await writeObservation(db,id,parsed.event);if(parsed.spatialAsset&&parsed.lat!==null)await putLocation(db,id,parsed.object.type,parsed.object.canonical_name,{lat:parsed.lat,lon:parsed.lon,fetched_at:parsed.event.fetched_at,provenance:parsed.object.provenance},false);return id;}
+async function ingestWorld(store,body){let imported=0;for(const r of (body.records||[]).slice(0,200)){if(r.domain!=='conflict')continue;try{const parsed=worldInput({id:r.id,name:r.name,provider:r.provider,record:r},true);await store.transaction(db=>saveWorld(store,db,parsed));imported++;}catch(e){if(!(e instanceof M.InputError))throw e;}}return imported;}
+module.exports={worldInput,saveWorld,ingestWorld};

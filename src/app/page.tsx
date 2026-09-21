@@ -1,4 +1,5 @@
 'use client';
+import { WORLD_DEFAULTS } from '@/lib/world/types';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -348,6 +349,7 @@ function Dashboard() {
 
   // ── DEFAULT: Most layers OFF — fast initial load ──
   const [activeLayers, setActiveLayers] = useState({
+    ...WORLD_DEFAULTS,
     flights: false,
     private: false,
     jets: false,
@@ -1228,6 +1230,8 @@ function Dashboard() {
         <OsirisMap 
           key={osirisTheme}
           data={replaying ? replayMapData : data}
+          worldLayers={activeLayers}
+          worldReplayAt={replaying ? replay.state.at : null}
           replayItems={replaying ? replay.items : null}
           onReplaySelect={replay.select}
           activeLayers={visibleMapLayers}

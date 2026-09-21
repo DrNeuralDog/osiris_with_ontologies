@@ -7,6 +7,7 @@ import {
   CloudLightning, Ship, Network, Database, Ghost,
   Flame, Tv, Radio, Mountain, Anchor, Megaphone, SlidersHorizontal
 } from 'lucide-react';
+import { WORLD_LAYERS, toggleWorldLayer } from '@/lib/world/types';
 import StyleStudio from './StyleStudio';
 import { TERRAIN_MIN_ZOOM, type TerrainStatus } from '@/lib/map-terrain';
 
@@ -48,6 +49,7 @@ interface LayerGroupDef {
 }
 
 const LAYER_GROUPS: LayerGroupDef[] = [
+  ...([{prefix:'infra_',label:'INFRA',fullLabel:'CRITICAL INFRASTRUCTURE',icon:Database},{prefix:'wx_',label:'WEATHER+',fullLabel:'WEATHER INTELLIGENCE',icon:CloudLightning},{prefix:'conflict_',label:'REPORTS',fullLabel:'CONFLICT / AIR THREATS',icon:AlertTriangle}].map(g=>({label:g.label,fullLabel:g.fullLabel,icon:g.icon,layers:Object.entries(WORLD_LAYERS).filter(([k])=>k.startsWith(g.prefix)).map(([key,label])=>({key,label,dataKey:'',description:'On demand · source attribution and evidence in WORLD DATA'}))}))),
   {
     label: 'SDK',
     fullLabel: 'OSIRIS SDK',
@@ -217,7 +219,7 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
 
   const toggle = (key: string) => {
     if ((key === 'terrain_elevation' || key === 'terrain_3d') && !activeLayers[key]) on3DModeSelected?.();
-    setActiveLayers((prev: any) => ({ ...prev, [key]: !prev[key] }));
+    setActiveLayers((prev: Record<string,boolean>) => toggleWorldLayer(prev,key));
   };
   const terrainDetails = activeLayers.terrain_elevation ? (
     <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] p-2.5 text-[10px] text-white/60">

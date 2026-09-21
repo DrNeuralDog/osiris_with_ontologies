@@ -105,6 +105,9 @@ export interface GdeltEvent {
   sources: number;
   url: string;
   date: string;
+  geo_type?: number;
+  source_time_available?: boolean;
+  event_date?: string;
 }
 
 /** Extracts the single deflated entry from a ZIP buffer. */
@@ -249,6 +252,9 @@ export async function fetchGdeltEvents(opts: FetchOptions = {}): Promise<GdeltEv
       sources: Number(c[COL.numSources]) || 0,
       url: c[COL.sourceUrl]?.trim() || '',
       date: parseGdeltDate(c[COL.dateAdded], c[COL.sqlDate]),
+      source_time_available: /^\d{14}$/.test(c[COL.dateAdded]) || /^\d{8}$/.test(c[COL.sqlDate]),
+      geo_type: Number(c[51]) || 0,
+      event_date: c[COL.sqlDate],
     });
   }
 

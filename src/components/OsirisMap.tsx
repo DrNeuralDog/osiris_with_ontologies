@@ -13,6 +13,7 @@ import SatelliteCard, { type SatelliteDetail } from '@/components/SatelliteCard'
 import { createRoot } from 'react-dom/client';
 import InvestigationActions from '@/components/InvestigationActions';
 import { investigationPoint } from '@/lib/investigation';
+import WorldLayers from './WorldLayers';
 import { useReplayMap } from './useReplayMap';
 import type { ReplayItem } from '@/lib/replay';
 import CctvPreviews, { type PreviewCamera } from '@/components/CctvPreviews';
@@ -38,6 +39,8 @@ interface SatelliteRow {
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface OsirisMapProps {
+  worldLayers?: Record<string, boolean>;
+  worldReplayAt?: number | null;
   replayItems?: ReplayItem[] | null;
   onReplaySelect?: (item: ReplayItem) => void;
   investigation?: InvestigationMapFocus | null;
@@ -168,7 +171,7 @@ interface AlertPinFeature {
   properties: AlertPinProps;
 }
 
-function OsirisMap({ replayItems = null, onReplaySelect, investigation = null, healthyCameraIds = null, data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, alertPinIds = null, projection = 'globe', terrainEnabled = false, terrainRetry = 0, terrainFocus = 0, onTerrainStatusChange, mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', drawnPolygons = [], arcgisLayers = [], drawMode = null, onDrawComplete, onDrawProgress, onDrawCancel, drawCommand = null, onMapCenter, route = null, userLocation = null, followUser = false, onFollowInterrupt, navigating = false, aircraftAirports = {} }: OsirisMapProps) {
+function OsirisMap({ worldLayers, worldReplayAt = null, replayItems = null, onReplaySelect, investigation = null, healthyCameraIds = null, data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, alertPinIds = null, projection = 'globe', terrainEnabled = false, terrainRetry = 0, terrainFocus = 0, onTerrainStatusChange, mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', drawnPolygons = [], arcgisLayers = [], drawMode = null, onDrawComplete, onDrawProgress, onDrawCancel, drawCommand = null, onMapCenter, route = null, userLocation = null, followUser = false, onFollowInterrupt, navigating = false, aircraftAirports = {} }: OsirisMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -3286,6 +3289,7 @@ function OsirisMap({ replayItems = null, onReplaySelect, investigation = null, h
           })}
         />
       )}
+      <WorldLayers mapRef={mapRef} ready={mapReady} layers={worldLayers || activeLayers} replayAt={worldReplayAt} onInvestigate={(seed,intent)=>onEntityClick?.({investigation_seed:seed,investigation_intent:intent})} />
       {!replayItems && selectedSat && <SatelliteCard sat={selectedSat} onClose={clearSat} onInvestigate={(seed, intent) => onEntityClick?.({ investigation_seed: seed, investigation_intent: intent })} />}
       {mapReady && <MapControls mapRef={mapRef} onInteract={onFollowInterrupt} />}
     </>

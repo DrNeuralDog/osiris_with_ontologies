@@ -18,14 +18,14 @@ function query(raw={},kind='state',now=Date.now()){
  M.check(Date.parse(to)<=now+60000&&Date.parse(at)<=now+60000,'Future replay is unavailable');
  if(kind==='chunk')M.check(Date.parse(to)-Date.parse(from)<=21600000,'Chunk must be <=6 hours');
  if(kind==='state')M.check(Date.parse(at)>=Date.parse(from)&&Date.parse(at)<=Date.parse(to),'Replay time outside range');
- const domains=raw.domains?raw.domains.split(','):P.DOMAINS;M.check(domains.length>0&&domains.length<=10&&domains.every(d=>P.DOMAINS.includes(d)),'Invalid domains');
+ const domains=raw.domains?raw.domains.split(','):P.DOMAINS;M.check(domains.length>0&&domains.length<=P.DOMAINS.length&&domains.every(d=>P.DOMAINS.includes(d)),'Invalid domains');
  let bbox=null;if(raw.bbox){bbox=raw.bbox.split(',').map(Number);M.check(bbox.length===4&&bbox.every(Number.isFinite)&&Math.abs(bbox[0])<=180&&Math.abs(bbox[2])<=180&&Math.abs(bbox[1])<=90&&Math.abs(bbox[3])<=90&&bbox[1]<=bbox[3],'Invalid viewport');}
  const limit=integer(raw.limit,kind==='events'?100:kind==='chunk'?5000:1000,1,kind==='events'?200:kind==='chunk'?10000:2000);
  let cursor=null;if(raw.cursor){try{cursor=JSON.parse(Buffer.from(raw.cursor,'base64url').toString());date(cursor.at);M.uuid(cursor.id);M.check(cursor.filter===hash([from,to,domains,bbox]),'Cursor filters changed');}catch{throw new M.InputError('Invalid timeline cursor');}}
  M.check(!raw.cursor||kind==='events','Cursor only applies to events');
  return {at,to,from,domains,bbox,limit,cursor};
 }
-const DOMAIN_SQL="CASE WHEN s.event_type='POSITION' THEN o.type WHEN s.event_type='FIRE' THEN 'fire' WHEN s.event_type='EARTHQUAKE' THEN 'earthquake' WHEN s.event_type IN ('SEVERE_WEATHER','WEATHER') THEN 'weather' WHEN s.event_type='NEWS_EVENT' THEN 'news' WHEN s.event_type='CYBER_INDICATOR' THEN 'cyber' WHEN s.event_type='REFERENCE_LOCATION' THEN 'infrastructure' END";
+const DOMAIN_SQL="CASE WHEN s.event_type='POSITION' THEN o.type WHEN s.event_type='FIRE' THEN 'fire' WHEN s.event_type='EARTHQUAKE' THEN 'earthquake' WHEN s.event_type IN ('SEVERE_WEATHER','WEATHER') THEN 'weather' WHEN s.event_type='CONFLICT_REPORT' THEN 'conflict' WHEN s.event_type='NEWS_EVENT' THEN 'news' WHEN s.event_type='CYBER_INDICATOR' THEN 'cyber' WHEN s.event_type='REFERENCE_LOCATION' THEN 'infrastructure' END";
 class TimelineService{
  constructor(store){this.store=store;this.cache=new Map();}
  async read(fn){const db=await this.store.pool.connect();try{await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL statement_timeout='4000ms'");const value=await fn(db);await db.query('COMMIT');return value;}catch(e){await db.query('ROLLBACK');throw e;}finally{db.release();}}

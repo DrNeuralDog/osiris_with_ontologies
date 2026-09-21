@@ -1,0 +1,35 @@
+import {describe,it,expect,vi,afterEach} from 'vitest';
+import {bounds,categories,worldSeed,conflictLayer,type WorldRecord} from './types';
+import {normalizeOSM,overpassQuery} from './infrastructure';
+import {normalizeWeather,weatherGrid} from './weather';
+import {gdeltRecord,warRecord,warTracker,alertsInUA,retainedReportsAt} from './conflict';
+import {ProviderCache,boundedJSON} from './server-cache';
+import {mapFeatures,geometryFeatures,windFeatures,radarFrameAt} from './map';
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();vi.unstubAllEnvs();});
+const node={type:'node',id:125,lat:52,lon:13,tags:{power:'plant',name:'Fixture',operator:'Example'},timestamp:'2026-01-01T00:00:00Z'};
+describe('world source identity and geometry',()=>{
+ it('retains OSM stable type/id and attribution, not a display-name identity',()=>{const a=normalizeOSM({elements:[node]})[0],b=normalizeOSM({elements:[{...node,tags:{...node.tags,name:'Renamed'}}]})[0];expect(a.id).toBe(b.id);expect(a.id).toBe('osm:node:125');expect(a.confidence).toBeNull();expect(a.observed_at).toBeNull();expect(a.source_license).toBe('ODbL 1.0');expect(worldSeed(a).id).toBe(a.id);});
+ it('ways keep source geometry but their pin is representative',()=>{const r=normalizeOSM({elements:[{type:'way',id:9,tags:{power:'line'},geometry:[{lat:1,lon:2},{lat:2,lon:3}]}]})[0];expect(r.geometry?.type).toBe('LineString');expect(r.geometry_precision).toBe('representative');expect(r.location_precision).toBe('APPROXIMATE');});
+ it('omits oversized geometry without inventing shortcuts',()=>{const r=normalizeOSM({elements:[{type:'way',id:1,tags:{power:'line'},geometry:Array.from({length:401},()=>({lat:1,lon:2}))}]})[0];expect(r.geometry).toBeUndefined();expect(r.properties.geometry_omitted).toBe(true);});
+ it('rejects missing identity/coordinates',()=>expect(normalizeOSM({elements:[{tags:{name:'foo'}},{...node,id:'DROP TABLE'}]})).toEqual([]));
+ it.each(['power','substation','transmission','pipeline','terminal','telecom','data_center','dam','transport'])('bounds category %s',c=>{const q=overpassQuery([13,52,13.2,52.2],categories(c));expect(q).toContain('[timeout:15]');expect(q).toContain('geom 500');});
+ it('rejects global fanout / arbitrary filters',()=>{expect(()=>overpassQuery([-180,-80,180,80],['power'])).toThrow('ZOOM_IN');expect(()=>categories('power);out;')).toThrow();expect(()=>bounds('1,2,3,NaN')).toThrow();expect(()=>bounds('170,-5,-170,5')).toThrow();});
+});
+describe('weather model and real radar frames',()=>{
+ it('grid never exceeds 16 points',()=>{expect(weatherGrid([-180,-80,180,80]).length).toBe(9);expect(weatherGrid([13,52,13.2,52.2])).toHaveLength(16);});
+ it('retains model validity, units and missing confidence; visibility keeps its own time',()=>{const r=normalizeWeather({current:{time:'2026-09-20T10:15',wind_speed_10m:6,wind_direction_10m:90,wind_gusts_10m:9},current_units:{wind_speed_10m:'m/s'},hourly:{time:['2026-09-20T10:00'],visibility:[2500]}},[[52,13]])[0];expect(r.evidence_state).toBe('DERIVED');expect(r.confidence).toBeNull();expect(r.properties.model_run_at).toBeNull();expect(r.properties.visibility_m).toBe(2500);expect(r.properties.visibility_valid_at).toBe('2026-09-20T10:00Z');expect(windFeatures([r]).features).toHaveLength(2);});
+ it('missing fields are unknown and never produce wind vectors',()=>{const r=normalizeWeather({current:{time:'2026-09-20T10:00'}},[[52,13]])[0];expect(r.properties.visibility_m).toBeNull();expect(windFeatures([r]).features).toHaveLength(0);});
+ it('never substitutes current radar for missing historical time',()=>{const frames=[{time:1000000,path:'/v2/radar/a'},{time:1600000,path:'/v2/radar/b'}];expect(radarFrameAt(frames,999999)).toBeNull();expect(radarFrameAt(frames,1300000)?.path).toBe('/v2/radar/a');expect(radarFrameAt(frames,2300000)).toBeNull();});
+});
+describe('reported conflict semantics',()=>{
+ it('excludes future source timestamps without rewriting their time',()=>{const report=warRecord({id:1,date:'2026-09-20T10:15:00Z'})!;expect(retainedReportsAt([report],Date.parse('2026-09-20T10:00:00Z'))).toEqual([]);expect(report.observed_at).toBe('2026-09-20T10:15:00.000Z');expect(retainedReportsAt([report],Date.parse('2026-09-20T10:15:00Z'))).toEqual([report]);expect(retainedReportsAt([{...report,observed_at:null}],Date.now())).toEqual([]);});
+ it('GDELT is reported news coding, not exact observed attack',()=>{const r=gdeltRecord({id:'123',lat:10,lng:20,name:'City',country:'XX',event_code:'195',root_code:'19',quad:4,quad_label:'Material conflict',goldstein:-10,tone:-4,articles:3,sources:2,url:'https://example.org/article',date:'2026-09-20T10:00:00Z',geo_type:3});expect(r.id).toBe('gdelt:123');expect(r.subtype).toBe('AIRSTRIKE');expect(r.evidence_state).toBe('REPORTED');expect(r.location_precision).toBe('LOCALITY');expect(r.confidence).toBeNull();expect(r.properties.time_precision).toContain('report');});
+ it('does not invent unsupported classifier categories or numeric confidence',()=>{const r=warRecord({id:15,title:'Report',event_type:'Unknown future type',date:'2026-09-20T10:00:00Z',confidence:'HIGH'});expect(r?.subtype).toBe('CONFLICT_EVENT');expect(r?.confidence).toBeNull();expect(r?.properties.source_confidence).toBe('HIGH');expect(warRecord({title:'no id'})).toBeNull();});
+ it('optional keys absent means zero network attempts',async()=>{vi.stubEnv('WAR_TRACKER_API_KEY','');vi.stubEnv('ALERTS_IN_UA_TOKEN','');const f=vi.fn();vi.stubGlobal('fetch',f);expect((await warTracker()).status).toBe('KEY_REQUIRED');expect((await alertsInUA()).status).toBe('KEY_REQUIRED');expect(f).not.toHaveBeenCalled();});
+ it('display mapping has no route/trajectory',()=>{expect(conflictLayer('DRONE_REPORT')).toBe('conflict_drone');expect(conflictLayer('MISSILE_REPORT')).toBe('conflict_missile');const r=warRecord({id:1,date:'2026-09-20T10:00:00Z',lat:10,lon:20}) as WorldRecord;expect(mapFeatures([r]).features[0].geometry.type).toBe('Point');expect(geometryFeatures([r]).features).toHaveLength(0);});
+});
+describe('bounded cache / upstream protection',()=>{
+ it('deduplicates in-flight and cache hits, throttles other keys',async()=>{let done!:(v:number)=>void;const cache=new ProviderCache('test',1000,1000,2),load=vi.fn(()=>new Promise<number>(r=>done=r));const a=cache.get('a',load),b=cache.get('a',load);await expect(cache.get('b',load)).rejects.toThrow('BACKOFF');done(42);expect(await a).toBe(42);expect(await b).toBe(42);expect(await cache.get('a',load)).toBe(42);expect(load).toHaveBeenCalledOnce();});
+ it('backs off after failures',async()=>{vi.useFakeTimers();const c=new ProviderCache('test',1000,1),load=vi.fn().mockRejectedValue(new Error('HTTP_429'));await expect(c.get('a',load)).rejects.toThrow('429');await expect(c.get('b',load)).rejects.toThrow('BACKOFF');expect(load).toHaveBeenCalledOnce();});
+ it('blocks redirects and oversized responses',async()=>{const f=vi.fn().mockResolvedValue(new Response('123456789'));vi.stubGlobal('fetch',f);await expect(boundedJSON('https://example.org',{},4)).rejects.toThrow('PAYLOAD_LIMIT');expect(f.mock.calls[0][1].redirect).toBe('error');});
+});

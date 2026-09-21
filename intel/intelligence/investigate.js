@@ -3,6 +3,7 @@ const {normalizeFeed,proof,iso}=require('./feeds');
 const {hash,writeObservation,putLocation}=require('./history');
 const TYPES=['aircraft','vessel','country','company','person','ip','fire','earthquake','weather','infrastructure','airport','port','satellite','camera','news','event'];
 function investigationInput(input){
+ if(input?.type==='world')return require('./world').worldInput(input);
  M.check(input&&typeof input==='object'&&TYPES.includes(input.type),'Unsupported investigation type');
  const r=M.jsonObject(input.record),type=input.type,id=M.text(input.id,'stable ID',500);
  const provider=M.text(input.provider||'OSIRIS map','provider',100),name=M.text(input.name||id,'name',300);
@@ -54,6 +55,7 @@ async function objectContext(store,id){
 async function investigate(store,input){
  const parsed=investigationInput(input);
  const id=await store.transaction(async db=>{
+  if(input.type==='world')return require('./world').saveWorld(store,db,parsed);
   const id=await store.putObject(db,parsed.object);
   if(parsed.event)await writeObservation(db,id,parsed.event);
   if(typeof parsed.lat==='number'&&typeof parsed.lon==='number')await putLocation(db,id,parsed.object.type,parsed.object.canonical_name,{lat:parsed.lat,lon:parsed.lon,provenance:parsed.object.provenance,observed_at:parsed.event?.observed_at});

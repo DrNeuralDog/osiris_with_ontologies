@@ -28,6 +28,13 @@ services:
       - OPENSKY_CLIENT_ID=${OPENSKY_CLIENT_ID:-}
       - OPENSKY_CLIENT_SECRET=${OPENSKY_CLIENT_SECRET:-}
       - N2YO_API_KEY=${N2YO_API_KEY:-}
+      - OPEN_METEO_API_KEY=${OPEN_METEO_API_KEY:-}
+      - WAR_TRACKER_API_KEY=${WAR_TRACKER_API_KEY:-}
+      - ALERTS_IN_UA_TOKEN=${ALERTS_IN_UA_TOKEN:-}
+      - UKRAINE_ALARM_API_KEY=${UKRAINE_ALARM_API_KEY:-}
+      - ACLED_USERNAME=${ACLED_USERNAME:-}
+      - ACLED_PASSWORD=${ACLED_PASSWORD:-}
+      - UCDP_API_TOKEN=${UCDP_API_TOKEN:-}
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
       - SDK_INGEST_KEY=${SDK_INGEST_KEY:-}
       - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY:-}
@@ -44,6 +51,8 @@ services:
       - GEMINI_API_KEY_6=${GEMINI_API_KEY_6:-}
       - GEMINI_API_KEY_7=${GEMINI_API_KEY_7:-}
       - GEMINI_API_KEY_8=${GEMINI_API_KEY_8:-}
+    volumes:
+      - ./data/imports:/app/data/imports:ro
     depends_on:
       osiris-intel:
         condition: service_healthy
@@ -92,6 +101,10 @@ services:
       HISTORY_TELEMETRY_DAYS: ${HISTORY_TELEMETRY_DAYS:-14}
       HISTORY_RETENTION_DAYS: ${HISTORY_RETENTION_DAYS:-90}
       INTELLIGENCE_WORKER: ${INTELLIGENCE_WORKER:-1}
+      WORLD_WAR_TRACKER_ENABLED: ${WAR_TRACKER_API_KEY:+1}
+      WORLD_ALERTS_ENABLED: ${ALERTS_IN_UA_TOKEN:+1}
+      WORLD_ACLED_ENABLED: ${ACLED_USERNAME:+1}
+      WORLD_UCDP_ENABLED: ${UCDP_API_TOKEN:+1}
     depends_on:
       osiris-postgres:
         condition: service_healthy

@@ -4,6 +4,7 @@ const {HistoryService,writeObservation}=require('./history');
 const {CorrelationEngine}=require('./correlations');
 const {retryDelay}=require('./policy');
 const FEEDS=[
+ ['world-conflicts','news',120,'/api/world/conflicts'],
  ['catalog','static',21600,'/api/intelligence/catalog'],['earthquakes','earthquake',120,'/api/earthquakes'],
  ['fires','fire',600,'/api/fires'],['weather','weather',300,'/api/weather'],['flights','aircraft',120,'/api/flights'],
  ['maritime','maritime',120,'/api/maritime'],['cyber-attacks','cyber',600,'/api/cyber-attacks'],
@@ -19,6 +20,11 @@ class IntelligenceWorker{
   await this.store.pool.query("INSERT INTO intelligence_worker_state(id,enabled) VALUES('main',true) ON CONFLICT(id) DO UPDATE SET enabled=true,heartbeat_at=now(),last_error=NULL");
   for(const [id,category,,endpoint] of FEEDS)await this.health.register({id:`feed:${id}`,name:`OSIRIS ${id} ${id==='catalog'?'reference catalog':'feed'}`,category,endpoint,scope:'service',policy:id==='cctv'?{live:1800,fresh:7200,historical:86400}:{}});
   await this.health.register({id:'weather:open-meteo',name:'Open-Meteo wind / visibility model',category:'weather',endpoint:'https://api.open-meteo.com/v1/forecast'});
+  for(const [id,category,enabled]of [['overpass','static',true],['open-meteo','weather',true],['rainviewer','weather',true],['gdelt-conflict','news',true],['war-tracker','news',process.env.WORLD_WAR_TRACKER_ENABLED==='1'],['alerts-in-ua','news',process.env.WORLD_ALERTS_ENABLED==='1'],['acled','news',process.env.WORLD_ACLED_ENABLED==='1'],['ucdp','news',process.env.WORLD_UCDP_ENABLED==='1'],['ukrainealarm','news',false],['goes','weather',false],['detector-aero','news',false]]){
+   await this.health.register({id:`world:${id}`,name:`${id} · World Data`,category,endpoint:id,enabled});
+   // These flags describe configured adapter capability, not a fabricated health check.
+   await this.store.pool.query('UPDATE intelligence_sources SET enabled=$2 WHERE id=$1',[`world:${id}`,enabled]);
+  }
   for(const [id] of FEEDS){const previous=await this.health.get(`feed:${id}`);this.failures.set(id,previous.consecutive_failures);if(previous.consecutive_failures&&previous.next_check_at)this.due.set(id,new Date(previous.next_check_at).getTime());}
   this.timer=setInterval(()=>void this.tick(),15000);this.timer.unref();void this.tick();
  }
@@ -35,6 +41,7 @@ class IntelligenceWorker{
    if(id==='flights'&&(!body.total||String(body.source).includes('stale')))throw new Error('EMPTY_OR_STALE');
    if(id==='fires'&&body.source==='Unknown')throw new Error('UPSTREAM_UNAVAILABLE');
    let imported=0;
+   if(id==='world-conflicts'){if(body.status==='UNAVAILABLE')throw new Error('UPSTREAM_UNAVAILABLE');imported=await require('./world').ingestWorld(this.store,body);}
    if(id==='catalog')imported=await this.ingest.assets(body);
    else if(['flights','maritime'].includes(id)){imported=await this.ingest.telemetry(id,body);if(id==='maritime')await this.ingest.assets({ports:body.ports});}
    else if(['earthquakes','fires','weather','cyber-attacks','news'].includes(id))imported=await this.ingest.events(id,body);

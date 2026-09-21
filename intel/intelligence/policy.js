@@ -1,5 +1,6 @@
 const M = require('../ontology/model');
 const POLICIES = {
+ conflict:{live:900,fresh:21600,historical:604800},
  aircraft:{live:120,fresh:300,historical:86400}, maritime:{live:120,fresh:600,historical:86400},
  weather:{live:900,fresh:3600,historical:86400}, earthquake:{live:300,fresh:86400,historical:604800},
  fire:{live:900,fresh:21600,historical:172800}, news:{live:300,fresh:3600,historical:86400},

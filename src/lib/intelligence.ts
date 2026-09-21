@@ -27,3 +27,8 @@ export async function intelligenceRequest<T>(path: string, signal?: AbortSignal,
 }
 export const displayTime = (value: string | null | undefined) => value ? new Date(value).toLocaleString() : 'Not provided';
 export const confidenceLabel = (value: number | null | undefined) => value == null ? 'Not provided' : String(value);
+// Imported reports retain their source's epistemic status in history and replay.
+export function observationEvidenceLabel(o: Pick<Observation, 'evidence_state' | 'provenance'>): string {
+  const state = o.evidence_state.toUpperCase();
+  return state === 'IMPORTED' && o.provenance.length > 0 && o.provenance.every(p => p.kind === 'reported') ? 'REPORTED' : state;
+}

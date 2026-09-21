@@ -31,11 +31,11 @@ async function writeObservation(db,objectId,raw,now=Date.now()) {
  ON CONFLICT(fingerprint) DO UPDATE SET fetched_at=GREATEST(intelligence_observations.fetched_at,excluded.fetched_at)
  RETURNING id,object_id,event_type,timeline_at`,values)).rows[0];
 }
-async function putLocation(db,objectId,kind,name,raw) {
+async function putLocation(db,objectId,kind,name,raw,retainReference=true) {
  const lat=raw.lat,lon=raw.lon??raw.lng;
  M.check(typeof lat==='number'&&Number.isFinite(lat)&&Math.abs(lat)<=90&&typeof lon==='number'&&Number.isFinite(lon)&&Math.abs(lon)<=180,'Invalid coordinates');
  const ps=(Array.isArray(raw.provenance)?raw.provenance:[raw.provenance]).map(M.provenance);
- if(!raw.observed_at&&['infrastructure','airport','port'].includes(kind))await writeObservation(db,objectId,{event_type:'REFERENCE_LOCATION',lat,lon,provenance:ps.map(p=>({...p,kind:'imported'})),data:{name,kind,reference:true},fetched_at:raw.fetched_at||new Date().toISOString()});
+ if(retainReference&&!raw.observed_at&&['infrastructure','airport','port'].includes(kind))await writeObservation(db,objectId,{event_type:'REFERENCE_LOCATION',lat,lon,provenance:ps.map(p=>({...p,kind:'imported'})),data:{name,kind,reference:true},fetched_at:raw.fetched_at||new Date().toISOString()});
  await db.query(`INSERT INTO intelligence_object_locations(object_id,kind,name,lat,lon,observed_at,fetched_at,provenance) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
  ON CONFLICT(object_id) DO UPDATE SET kind=excluded.kind,name=excluded.name,lat=excluded.lat,lon=excluded.lon,observed_at=excluded.observed_at,fetched_at=excluded.fetched_at,provenance=excluded.provenance
  WHERE excluded.observed_at IS NULL OR intelligence_object_locations.observed_at IS NULL OR excluded.observed_at>=intelligence_object_locations.observed_at`,[objectId,kind,name,lat,lon,raw.observed_at||null,raw.fetched_at||new Date().toISOString(),JSON.stringify(ps)]);

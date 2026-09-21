@@ -1,8 +1,8 @@
 const {freshness}=require('./policy');
-const DOMAINS=['aircraft','vessel','satellite','fire','earthquake','weather','news','cyber','infrastructure','correlations'];
+const DOMAINS=['aircraft','vessel','satellite','fire','earthquake','weather','news','cyber','infrastructure','correlations','conflict'];
 // Visibility is a display policy, not an assertion that a position/event persists.
-const WINDOWS={aircraft:300,vessel:900,satellite:300,fire:21600,earthquake:86400,weather:604800,news:21600,cyber:21600,infrastructure:2592000};
-const TYPES={FIRE:'fire',EARTHQUAKE:'earthquake',SEVERE_WEATHER:'weather',WEATHER:'weather',NEWS_EVENT:'news',CYBER_INDICATOR:'cyber',REFERENCE_LOCATION:'infrastructure'};
+const WINDOWS={conflict:21600,aircraft:300,vessel:900,satellite:300,fire:21600,earthquake:86400,weather:604800,news:21600,cyber:21600,infrastructure:2592000};
+const TYPES={CONFLICT_REPORT:'conflict',FIRE:'fire',EARTHQUAKE:'earthquake',SEVERE_WEATHER:'weather',WEATHER:'weather',NEWS_EVENT:'news',CYBER_INDICATOR:'cyber',REFERENCE_LOCATION:'infrastructure'};
 const moving=d=>['aircraft','vessel','satellite'].includes(d);
 function domain(o){return o.event_type==='POSITION'&&moving(o.object_type)?o.object_type:TYPES[o.event_type]||null;}
 function inBounds(lat,lon,b){return !b||lat>=b[1]&&lat<=b[3]&&(b[0]<=b[2]?lon>=b[0]&&lon<=b[2]:lon>=b[0]||lon<=b[2]);}

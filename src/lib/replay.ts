@@ -1,5 +1,5 @@
 import type { Observation, Correlation, InvestigationMapFocus } from './intelligence';
-export const REPLAY_DOMAINS=['aircraft','vessel','satellite','fire','earthquake','weather','news','cyber','infrastructure','correlations'] as const;
+export const REPLAY_DOMAINS=['aircraft','vessel','satellite','fire','earthquake','weather','news','cyber','infrastructure','correlations','conflict'] as const;
 export type ReplayDomain=typeof REPLAY_DOMAINS[number];
 export type ReplayBounds=[number,number,number,number];
 export interface ReplayRange {from:number;to:number}
@@ -20,7 +20,7 @@ export function parseReplayURL(input:string,now:number){const u=new URL(input),s
 export function replayItemsAt(chunk:ReplayChunk|undefined,at:number){return (chunk?.items||[]).filter(i=>Date.parse(i.from)<=at&&Date.parse(i.to)>at).map(i=>({...i,freshness:replayFreshness(i,at,chunk?.policies||{})}));}
 export function replayFreshness(item:ReplayItem,at:number,policies:ReplayChunk['policies']){const time=item.observation?.observed_at;if(!time)return 'UNKNOWN';const category=item.domain==='vessel'?'maritime':item.domain==='infrastructure'?'static':item.domain,p=policies[category];if(!p)return 'UNKNOWN';const age=(at-Date.parse(time))/1000;return age<0?'UNKNOWN':age<=p.live?'LIVE':age<=p.fresh?'FRESH':age<=p.historical?'STALE':'HISTORICAL';}
 export const replayFeatures=(items:ReplayItem[]):GeoJSON.FeatureCollection=>({type:'FeatureCollection',features:items.filter(i=>i.lat!=null&&i.lon!=null&&(i.domain!=='correlations'||i.status==='ACTIVE')).slice(0,2000).map(i=>({type:'Feature',geometry:{type:'Point',coordinates:[i.lon!,i.lat!]},properties:{id:i.id,label:i.name,domain:i.domain,color:REPLAY_COLORS[i.domain]}}))});
-export const REPLAY_COLORS:Record<ReplayDomain,string>={aircraft:'#67e8f9',vessel:'#60a5fa',satellite:'#c4b5fd',fire:'#fb923c',earthquake:'#f87171',weather:'#a5b4fc',news:'#fde68a',cyber:'#e879f9',infrastructure:'#94a3b8',correlations:'#facc15'};
+export const REPLAY_COLORS:Record<ReplayDomain,string>={conflict:'#fb7185',aircraft:'#67e8f9',vessel:'#60a5fa',satellite:'#c4b5fd',fire:'#fb923c',earthquake:'#f87171',weather:'#a5b4fc',news:'#fde68a',cyber:'#e879f9',infrastructure:'#94a3b8',correlations:'#facc15'};
 export function chunkRange(s:ReplayState){const hour=3600000,from=Math.max(s.from,Math.floor(s.at/hour)*hour);return {from,to:Math.min(s.to,from+hour)};}
 
 export function replayLiveLayers(layers:Record<string,boolean>):Record<string,boolean>{return {...Object.fromEntries(Object.entries(layers).map(([k,v])=>[k,k.startsWith('terrain_')?v:false])),conflict_zones:false,sdk_sea:false,sdk_air:false,sdk_naval:false};}
@@ -28,7 +28,7 @@ export function normalizeReplayBounds(b:{west:number;south:number;east:number;no
 export function replayInvestigation(focus:InvestigationMapFocus|null,s:ReplayState):InvestigationMapFocus|null {if(!focus?.track)return null;return {...focus,points:(focus.points||[]).filter(p=>p.at&&Date.parse(p.at)>=s.from&&Date.parse(p.at)<=Math.min(s.at,s.to))};}
 
 export function historyReplayItem(o:Observation,objectType:string,name:string):ReplayItem|undefined {
- const mapping:Record<string,string>={POSITION:objectType,FIRE:'fire',EARTHQUAKE:'earthquake',SEVERE_WEATHER:'weather',WEATHER:'weather',NEWS_EVENT:'news',CYBER_INDICATOR:'cyber',REFERENCE_LOCATION:'infrastructure'};
+ const mapping:Record<string,string>={CONFLICT_REPORT:'conflict',POSITION:objectType,FIRE:'fire',EARTHQUAKE:'earthquake',SEVERE_WEATHER:'weather',WEATHER:'weather',NEWS_EVENT:'news',CYBER_INDICATOR:'cyber',REFERENCE_LOCATION:'infrastructure'};
  const domain=mapping[o.event_type];
  if(!REPLAY_DOMAINS.includes(domain as ReplayDomain))return undefined;
  return {id:o.id,object_id:o.object_id,name,domain:domain as ReplayDomain,from:o.timeline_at,to:new Date(Date.parse(o.timeline_at)+1).toISOString(),lat:o.lat,lon:o.lon,observation:o};

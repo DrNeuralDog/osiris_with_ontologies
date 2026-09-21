@@ -65,3 +65,5 @@ scanner_backend_backup.js
 /.cache/
 /off
 /off.*.tmp
+/data/imports/*
+!/data/imports/.gitkeep

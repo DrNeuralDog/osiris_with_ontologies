@@ -7,7 +7,7 @@ function distanceKm(a,b){if(!coordinates(a)||!coordinates(b))return Infinity;con
 function bearing(a,b){const dl=(b.lon-a.lon)*RAD;return (Math.atan2(Math.sin(dl)*Math.cos(b.lat*RAD),Math.cos(a.lat*RAD)*Math.sin(b.lat*RAD)-Math.sin(a.lat*RAD)*Math.cos(b.lat*RAD)*Math.cos(dl))*180/Math.PI+360)%360;}
 const age=(s,now)=>s.observed_at?(now-new Date(s.observed_at).getTime())/60000:Infinity;
 const fresh=(s,minutes,now)=>age(s,now)>=-5&&age(s,now)<=minutes&&(!s.valid_to||new Date(s.valid_to).getTime()>now);
-const precise=p=>!['country','region'].includes(p.data?.location_precision||p.location_precision);
+const precise=p=>!['country','region','district','approximate','unknown'].includes(String(p.data?.location_precision||p.location_precision||'').toLowerCase())&&(p.data?.geometry_precision||p.geometry_precision)!=='representative';
 const snapshot=(s,role)=>({observation_id:s.id||null,object_id:s.object_id,role,observed_at:s.observed_at||null,fetched_at:s.fetched_at||null,lat:s.lat??null,lon:s.lon??null,data:s.data||{},provenance:s.provenance||[]});
 function make(type,seed,target,support,now,radius,details,ttlMinutes){
  const distance=distanceKm(seed,target),providers=[...new Set([seed,target,...support].flatMap(s=>(s.provenance||[]).map(p=>p.provider)).filter(Boolean))];
@@ -44,7 +44,7 @@ function evaluate({signals=[],assets=[],weather=[],cyberLinks=[]},now=Date.now()
   }
   if(!coordinates(signal)||!precise(signal))continue;
   for(const asset of assets){
-   if(!coordinates(asset)||asset.object_id===signal.object_id)continue;
+   if(!coordinates(asset)||!precise(asset)||asset.object_id===signal.object_id)continue;
    const mobile=['aircraft','vessel'].includes(asset.kind);
    if(mobile&&!fresh(asset,5,now))continue;
    if(!mobile&&asset.fetched_at&&now-new Date(asset.fetched_at).getTime()>30*86400000)continue;
