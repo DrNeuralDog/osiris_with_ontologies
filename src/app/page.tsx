@@ -25,6 +25,8 @@ import GlobalStatusBar from '@/components/GlobalStatusBar';
 import LiveAlerts from '@/components/LiveAlerts';
 import WorldRemote from '@/components/WorldRemote';
 import ArcGISPanel from '@/components/ArcGISPanel';
+import { mapInvestigationSeed, type InvestigationSeed } from '@/lib/ontology';
+const EntityGraphPanel = dynamic(() => import('@/components/EntityGraphPanel'), { ssr: false });
 const OsirisMap = dynamic(() => import('@/components/OsirisMap'), { ssr: false });
 const LayerPanel = dynamic(() => import('@/components/LayerPanel'));
 const SpaceCam = dynamic(() => import('@/components/SpaceCam'), { ssr: false });
@@ -144,6 +146,10 @@ const newsTransform = (d: { news?: unknown[]; sources?: unknown[]; timestamp?: s
 });
 
 export default function Dashboard() {
+  const [graphOpen, setGraphOpen] = useState(false);
+  const [graphSeed, setGraphSeed] = useState<InvestigationSeed>();
+  const closeGraph = useCallback(() => setGraphOpen(false), []);
+  const exploreEntity = useCallback((seed: InvestigationSeed) => { setGraphSeed(seed); setGraphOpen(true); }, []);
   const dataRef = useRef<any>({});
   const [dataVersion, setDataVersion] = useState(0);
   const data = dataRef.current;
@@ -505,6 +511,8 @@ export default function Dashboard() {
   }, []);
   // Entity click handler (hoisted from JSX to comply with Rules of Hooks - Fixes #113)
   const handleEntityClick = useCallback((entity: any) => {
+    const seed = mapInvestigationSeed(entity || {});
+    if (seed) { setGraphSeed(seed); setGraphOpen(true); }
     if (entity?.type === 'cctv') setActiveCamera(entity);
     if (entity?.type === 'live_news' && entity.url) {
       setLiveFeedUrl(entity.url);
@@ -1845,6 +1853,8 @@ export default function Dashboard() {
             ) : regionDossier && (
               <div className="space-y-3">
                 <div><div className="hud-label mb-0.5">LOCATION</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.location?.display_name}</div></div>
+                {regionDossier.location?.country && <button className="text-xs text-[var(--gold-primary)] underline" onClick={() => exploreEntity({ type: 'country', id: regionDossier.country?.wikidata || regionDossier.location.country, name: regionDossier.location.country, iso3166: regionDossier.location.country_code, provider: 'OSIRIS region dossier' })}>Explore country relationships</button>}
+                {regionDossier.head_of_state?.name && <button className="block text-xs text-[var(--gold-primary)] underline" onClick={() => exploreEntity({ type: 'person', id: regionDossier.head_of_state.wikidata || regionDossier.head_of_state.name, name: regionDossier.head_of_state.name, provider: 'OSIRIS region dossier' })}>Explore person relationships</button>}
                 {regionDossier.country && (
                   <div className="grid grid-cols-2 gap-2">
                     <div><div className="hud-label mb-0.5">COUNTRY</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.flag} {regionDossier.country.name}</div></div>
@@ -1871,6 +1881,8 @@ export default function Dashboard() {
       />
 
       {/* ── Entity Graph Panel ── */}
+      <button onClick={() => { setGraphSeed(undefined); setGraphOpen(true); }} className="absolute left-4 bottom-24 z-[400] flex items-center gap-2 px-3 py-2 rounded border border-[var(--gold-primary)]/40 bg-[var(--bg-primary)] text-[var(--gold-primary)] text-[10px] font-mono" title="Search objects and investigate relationships"><Network size={14} /> ONTOLOGY</button>
+      {graphOpen && <EntityGraphPanel seed={graphSeed} onClose={closeGraph} />}
       {/* Guidance belongs over the map, where the clicking happens. */}
       {drawMode && (
         <DrawHud

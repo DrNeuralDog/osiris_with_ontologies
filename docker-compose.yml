@@ -11,22 +11,51 @@ services:
     # Host port is configurable via OSIRIS_PORT in .env (defaults to 3000).
     ports:
       - "${OSIRIS_PORT:-3000}:3000"
-    # Optional API keys / scanner backend — copy .env.template to .env and
-    # fill in what you need. Missing file is ignored (keyless feeds still work).
-    env_file:
-      - path: .env
-        required: false
+    # Optional API keys / scanner backend — copy .env.example to .env.
+    # .env remains supported by Compose interpolation; no file is required.
     environment:
       - NODE_OPTIONS=--dns-result-order=ipv4first
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
+      - INTEL_URL=http://osiris-intel:4000
+      - SCANNER_URL=${SCANNER_URL:-}
+      - SCANNER_KEY=${SCANNER_KEY:-}
+      - FIRMS_API_KEY=${FIRMS_API_KEY:-}
+      - AIS_API_KEY=${AIS_API_KEY:-}
+      - OPENSKY_CLIENT_ID=${OPENSKY_CLIENT_ID:-}
+      - OPENSKY_CLIENT_SECRET=${OPENSKY_CLIENT_SECRET:-}
+      - N2YO_API_KEY=${N2YO_API_KEY:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      - SDK_INGEST_KEY=${SDK_INGEST_KEY:-}
+      - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY:-}
+      - HELIUS_API_KEY=${HELIUS_API_KEY:-}
+      - ASTRA_GPU_URL=${ASTRA_GPU_URL:-}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-}
+      - GITHUB_WEBHOOK_FORWARD_URL=${GITHUB_WEBHOOK_FORWARD_URL:-}
+      - UMAMI_WEBSITE_ID=${UMAMI_WEBSITE_ID:-}
+      - GEMINI_API_KEY_1=${GEMINI_API_KEY_1:-}
+      - GEMINI_API_KEY_2=${GEMINI_API_KEY_2:-}
+      - GEMINI_API_KEY_3=${GEMINI_API_KEY_3:-}
+      - GEMINI_API_KEY_4=${GEMINI_API_KEY_4:-}
+      - GEMINI_API_KEY_5=${GEMINI_API_KEY_5:-}
+      - GEMINI_API_KEY_6=${GEMINI_API_KEY_6:-}
+      - GEMINI_API_KEY_7=${GEMINI_API_KEY_7:-}
+      - GEMINI_API_KEY_8=${GEMINI_API_KEY_8:-}
+    depends_on:
+      osiris-intel:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
       - default
-      - umami_default
 
   osiris-cache:
     image: nginx:alpine
@@ -37,7 +66,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - nginx-cache:/var/cache/nginx
     depends_on:
-      - osiris
+      osiris:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - default
@@ -48,17 +78,38 @@ services:
       dockerfile: Dockerfile
     container_name: osiris-intel
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
+    environment:
+      PGHOST: osiris-postgres
+      PGPORT: 5432
+      PGDATABASE: osiris
+      PGUSER: osiris
+      PGPASSWORD: ${ONTOLOGY_DB_PASSWORD:-osiris-local-dev}
+    depends_on:
+      osiris-postgres:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - default
 
+  osiris-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: osiris
+      POSTGRES_USER: osiris
+      POSTGRES_PASSWORD: ${ONTOLOGY_DB_PASSWORD:-osiris-local-dev}
+    volumes:
+      - ontology-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U osiris -d osiris"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
 volumes:
   nginx-cache:
-
-networks:
-  umami_default:
-    external: true
+  ontology-postgres:
 
 # ── CasaOS app-store metadata (ignored by plain Docker Compose) ──
 x-casaos:

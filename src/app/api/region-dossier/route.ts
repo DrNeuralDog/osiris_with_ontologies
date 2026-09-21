@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         try {
           const safe = countryName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
           const sparql = `
-          SELECT ?leaderLabel ?positionLabel ?population ?area ?capitalLabel ?regionLabel ?flagUrl (GROUP_CONCAT(DISTINCT ?langLabel; separator=", ") AS ?languages) (GROUP_CONCAT(DISTINCT ?currLabel; separator=", ") AS ?currencies)
+          SELECT ?country ?leader ?leaderLabel ?positionLabel ?population ?area ?capitalLabel ?regionLabel ?flagUrl (GROUP_CONCAT(DISTINCT ?langLabel; separator=", ") AS ?languages) (GROUP_CONCAT(DISTINCT ?currLabel; separator=", ") AS ?currencies)
           WHERE { 
             ?country wdt:P31/wdt:P279* wd:Q6256; 
                      rdfs:label "${safe}"@en. 
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
               ?curr rdfs:label ?currLabel. 
             } 
           } 
-          GROUP BY ?leaderLabel ?positionLabel ?population ?area ?capitalLabel ?regionLabel ?flagUrl
+          GROUP BY ?country ?leader ?leaderLabel ?positionLabel ?population ?area ?capitalLabel ?regionLabel ?flagUrl
           LIMIT 1`;
           
           const res = await fetch(
@@ -123,11 +123,13 @@ export async function GET(request: Request) {
 
     if (wdData) {
       headOfState = wdData.leaderLabel ? {
+        wikidata: wdData.leader?.value?.match(/\/(Q[1-9]\d*)$/)?.[1],
         name: wdData.leaderLabel.value,
         position: wdData.positionLabel?.value || 'Head of State',
       } : null;
 
       countryData = {
+        wikidata: wdData.country?.value?.match(/\/(Q[1-9]\d*)$/)?.[1],
         name: countryName,
         official_name: countryName,
         capital: wdData.capitalLabel?.value,

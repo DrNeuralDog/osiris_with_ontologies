@@ -21,6 +21,10 @@
 
 ## Overview
 
+Этот форк добавляет **Persistent Ontology V1**: PostgreSQL, типизированные связи,
+provenance и интерактивный Graph Explorer. Запуск: `docker compose up -d --build`.
+Инструкция, архитектура и API: [docs/Ontology.md](docs/Ontology.md).
+
 Osiris is a production-grade OSINT platform that provides situational awareness across multiple intelligence domains. Built with Next.js 16 and MapLibre GL, every data point is rendered via WebGL for 60fps performance even with thousands of concurrent entities on-screen.
 
 ### Key Capabilities

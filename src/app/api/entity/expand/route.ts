@@ -49,7 +49,8 @@ export async function GET(req: Request) {
       if (val) params.set(key, val);
     }
     const res = await fetch(`${INTEL_URL}/resolve?${params}`, {
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(60000),
+      redirect: 'error',
       headers: { 'X-Forwarded-For': clientIp },
     });
 
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
 
     const data = await res.json();
     return NextResponse.json(data, {
-      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=7200' },
+      headers: { 'Cache-Control': 'no-store' },
     });
   } catch (e) {
     console.error('[OSIRIS] Intel proxy error:', e instanceof Error ? e.message : e);

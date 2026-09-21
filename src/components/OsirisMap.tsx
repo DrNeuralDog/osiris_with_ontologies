@@ -911,6 +911,15 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
       popupRef.current?.remove();
       popupRef.current = new maplibregl.Popup({ closeButton: true, maxWidth: '420px', offset: 14 }).setLngLat(coords).setHTML(html).addTo(map);
     };
+    const explore = (entity: Record<string, unknown>) => {
+      const element = popupRef.current?.getElement();
+      if (!element) return;
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = 'Explore relationships';
+      button.style.cssText = 'display:block;width:100%;padding:9px;margin-top:8px;border:1px solid #D4AF3760;border-radius:4px;color:#D4AF37;background:#131821;font:11px monospace;cursor:pointer';
+      button.addEventListener('click', () => onEntityClick?.(entity));
+      element.querySelector('.maplibregl-popup-content')?.appendChild(button);
+    };
     const pStyle = `background:rgba(12,14,26,0.95);backdrop-filter:blur(16px);border-radius:10px;padding:16px;font-family:'JetBrains Mono',monospace;`;
     const linkStyle = `display:inline-block;margin-top:8px;padding:5px 12px;font-size:10px;letter-spacing:0.12em;text-decoration:none;border-radius:5px;font-family:'JetBrains Mono',monospace;`;
 
@@ -964,6 +973,9 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
           </div>
         </div>`);
 
+        const aircraftEntity: Record<string, unknown> = { type: 'aircraft', id: p.icao24 || p.registration || cs, icao24: p.icao24, registration: p.registration, callsign: cs, model: p.model, name: cs, provider: 'OSIRIS ADS-B feed' };
+        explore(aircraftEntity);
+
         // The transponder only reports a type code (often nothing at all), so
         // resolve the real manufacturer/model and registration out of band.
         if (p.icao24) {
@@ -975,6 +987,7 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
                 if (el) el.innerHTML = '<span style="color:#5C5A54;font-size:9px;">AIRFRAME NOT IN REGISTRY</span>';
                 return;
               }
+              Object.assign(aircraftEntity, { registration: d.registration || p.registration, model: d.model || p.model });
               const bits = [d.registration, d.typeCode, d.operator].filter(Boolean)
                 .map((x: string) => htmlEsc(String(x))).join(' · ');
               el.innerHTML =
@@ -1405,6 +1418,7 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
         <div style="font-size:8px;color:#5C5A54;line-height:1.5;margin-bottom:8px;">Blocklist entry, not an observed attack. Marker sits at the hosting country's centroid, not the host's location.</div>
         <div style="font-size:7px;color:#5C5A54;text-align:center;letter-spacing:0.1em;">SOURCE: <a href="${urlSafe(p.source_url || 'https://feodotracker.abuse.ch/browse/')}" target="_blank" style="color:${c};text-decoration:underline;">ABUSE.CH FEODO TRACKER ↗</a></div>
       </div>`);
+      if (p.ip) explore({ type: 'ip', id: p.ip, ip: p.ip, provider: 'abuse.ch Feodo Tracker' });
     });
 
     // ── Generic hover for clickables ──
@@ -1451,6 +1465,7 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
         </div>
         ${threatsHtml}
       </div>`);
+      explore({ type: 'company', id: p.wikidata || p.name, name: p.name, wikidata: p.wikidata, provider: 'OSIRIS SCM' });
     });
 
     // ── IP Sweep device click ──
@@ -1532,6 +1547,7 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
         <div><span style="color:#5C5A54;font-size:9px;">DESTINATION: </span><span style="color:#E8E6E0;font-size:9px;">${p.destination || 'UNKNOWN'}</span></div>
         <a href="https://www.marinetraffic.com/en/ais/details/ships/mmsi:${p.mmsi}" target="_blank" style="${linkStyle}flex:1;text-align:center;color:${color};border:1px solid ${color}40;background:${color}15;display:inline-block;width:100%;box-sizing:border-box;margin-top:4px;">[ OPEN SOURCE ↗ ]</a>
       </div>`);
+      explore({ type: 'vessel', id: p.imo || p.mmsi || p.name, mmsi: p.mmsi, imo: p.imo, name: p.name, provider: 'OSIRIS AIS feed' });
     });
 
     // ── Weather Events (NASA EONET + NOAA/NWS + GDACS) ──
@@ -1596,6 +1612,7 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
           <a href="https://www.google.com/maps/@${coords[1]},${coords[0]},14z/data=!3m1!1e3" target="_blank" rel="noopener noreferrer" style="${linkStyle}color:#8A8880;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);">SATELLITE</a>
         </div>
       </div>`);
+      if (p.owner) explore({ type: 'company', id: p.owner, name: p.owner, provider: 'OSIRIS infrastructure source' });
     });
 
     // ── Maritime Ports & Naval Bases ──
@@ -2111,7 +2128,7 @@ function OsirisMap({ data, activeLayers, onEntityClick, onMouseCoords, onRightCl
     if (!mapReady) return;
     setGeo('maritime', activeLayers.maritime && data.maritime_ports ? data.maritime_ports.map((p: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { name: p.name, country: p.country, type: p.type, volume: p.volume, fleet: p.fleet, rank: p.rank } })) : []);
     setGeo('maritime-choke', activeLayers.maritime && data.maritime_chokepoints ? data.maritime_chokepoints.map((c: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [c.lng, c.lat] }, properties: { name: c.name, traffic: c.traffic, risk: c.risk } })) : []);
-    setGeo('maritime-ships', activeLayers.maritime && data.maritime_ships ? data.maritime_ships.map((s: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [s.lng, s.lat] }, properties: { name: s.name || s.mmsi?.toString(), type: s.type || 'cargo', speed: s.speed, heading: s.heading, destination: s.destination, flag: s.flag } })) : []);
+    setGeo('maritime-ships', activeLayers.maritime && data.maritime_ships ? data.maritime_ships.map((s: any) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [s.lng, s.lat] }, properties: { mmsi: s.mmsi, imo: s.imo, name: s.name || s.mmsi?.toString(), type: s.type || 'cargo', speed: s.speed, heading: s.heading, destination: s.destination, flag: s.flag } })) : []);
   }, [mapReady, data.maritime_ports, data.maritime_chokepoints, data.maritime_ships, activeLayers.maritime, setGeo]);
 
   useEffect(() => {
