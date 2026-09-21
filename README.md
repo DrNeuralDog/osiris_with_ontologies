@@ -277,3 +277,5 @@ If you want to help keep the servers alive, and support us to get access to bett
 ### Intelligence Center
 
 Обзор системы, расследование объектов карты, History/Evidence и CI описаны в [docs/IntelligenceCenter.md](docs/IntelligenceCenter.md).
+
+Глобальная временная шкала, LIVE/REPLAY, исторические observations и temporal API: [docs/WorldReplay.md](docs/WorldReplay.md).

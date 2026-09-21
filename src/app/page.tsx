@@ -25,6 +25,9 @@ import GlobalStatusBar from '@/components/GlobalStatusBar';
 import LiveAlerts from '@/components/LiveAlerts';
 import WorldRemote from '@/components/WorldRemote';
 import ArcGISPanel from '@/components/ArcGISPanel';
+import { replayLiveLayers, normalizeReplayBounds, replayInvestigation } from '@/lib/replay';
+import WorldReplayProvider, { useWorldReplay } from '@/components/WorldReplayProvider';
+const GlobalTimeline = dynamic(() => import('@/components/GlobalTimeline'), { ssr: false });
 import { type InvestigationSeed } from '@/lib/ontology';
 import { mapEntitySeed, registerInvestigation, type InvestigationIntent, type InvestigationContext } from '@/lib/investigation';
 const IntelligenceCenter = dynamic(() => import('@/components/IntelligenceCenter'), { ssr: false });
@@ -150,7 +153,11 @@ const newsTransform = (d: { news?: unknown[]; sources?: unknown[]; timestamp?: s
   alert_pins: (d.news ?? []).filter(n => (n as { place?: unknown } | null)?.place),
 });
 
-export default function Dashboard() {
+export default function Page() { return <WorldReplayProvider><Dashboard /></WorldReplayProvider>; }
+function Dashboard() {
+  const replay = useWorldReplay();
+  const replaying = replay.state.mode === 'replay';
+  const replayMapData = useMemo(()=>({}),[]);
   const [graphOpen, setGraphOpen] = useState(false);
   const [graphIntent, setGraphIntent] = useState<InvestigationIntent>('graph');
   const [investigationContext, setInvestigationContext] = useState<InvestigationContext | null>(null);
@@ -304,6 +311,11 @@ export default function Dashboard() {
   const [showArcGIS, setShowArcGIS] = useState(false);
   const [arcgisLayers, setArcgisLayers] = useState<Array<{ id: string; title: string; url: string; geojson: any; color: string; visible: boolean; opacity: number }>>([]);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number; bounds?: { west: number; south: number; east: number; north: number } } | null>(null);
+  const setReplayBounds = replay.setBounds;
+  const reportMapCenter = useCallback((value: NonNullable<typeof mapCenter>) => {
+    setMapCenter(value);
+    if (value.bounds) setReplayBounds(normalizeReplayBounds(value.bounds));
+  }, [setReplayBounds]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<'layers'|'markets'|'intel'|'search'|'recon'|'remote'|null>(null);
   const [mapProjection, setMapProjection] = useState<'globe'|'mercator'>('globe');
@@ -376,6 +388,7 @@ export default function Dashboard() {
     cf_outages: false,
     cf_attacks: false,
   });
+  const visibleMapLayers = useMemo(() => replaying ? replayLiveLayers(activeLayers) : activeLayers, [replaying, activeLayers]);
   // Server-side capability flags — gate layers that need credentials.
   const selectFlatMap = () => {
     setActiveLayers(prev => ({ ...prev, terrain_elevation: false, terrain_3d: false }));
@@ -454,8 +467,8 @@ export default function Dashboard() {
     if (urlTimer.current) clearTimeout(urlTimer.current);
     urlTimer.current = setTimeout(() => {
       const active = Object.entries(activeLayers).filter(([,v]) => v).map(([k]) => k).join(',');
-      const url = `${window.location.pathname}?layers=${active}`;
-      window.history.replaceState(null, '', url);
+      const url = new URL(window.location.href); url.searchParams.set('layers', active);
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
     }, 1500);
   }, [activeLayers]);
 
@@ -1214,8 +1227,10 @@ export default function Dashboard() {
       <ErrorBoundary name="Map">
         <OsirisMap 
           key={osirisTheme}
-          data={data} 
-          activeLayers={activeLayers} 
+          data={replaying ? replayMapData : data}
+          replayItems={replaying ? replay.items : null}
+          onReplaySelect={replay.select}
+          activeLayers={visibleMapLayers}
           projection={mapProjection === 'mercator' ? 'mercator' : 'globe'}
           terrainEnabled={activeLayers.terrain_elevation && mapProjection === 'globe'}
           terrainFocus={terrainFocus}
@@ -1227,31 +1242,31 @@ export default function Dashboard() {
           onRightClick={handleRightClick} 
           onViewStateChange={setMapView} 
           flyToLocation={flyToLocation}
-          investigation={investigation}
+          investigation={replaying ? replayInvestigation(investigation,replay.state) : investigation}
           healthyCameraIds={healthyOnly ? healthyCameraIds : null}
           alertPinIds={pinnedAlertIds}
-          sweepData={sweepData}
-          scanTargets={scanTargets}
-          demoMode={demoMode}
+          sweepData={replaying ? null : sweepData}
+          scanTargets={replaying ? [] : scanTargets}
+          demoMode={replaying ? false : demoMode}
           theme={osirisTheme}
-          arcgisLayers={arcgisLayers.filter(l => l.visible).map(l => ({ id: l.id, title: l.title, geojson: l.geojson, color: l.color, opacity: l.opacity }))}
-          onMapCenter={setMapCenter}
-          route={activeRoute}
-          userLocation={
+          arcgisLayers={replaying ? [] : arcgisLayers.filter(l => l.visible).map(l => ({ id: l.id, title: l.title, geojson: l.geojson, color: l.color, opacity: l.opacity }))}
+          onMapCenter={reportMapCenter}
+          route={replaying ? null : activeRoute}
+          userLocation={replaying ? null :
             navSession && navProgress
               ? { lat: navProgress.snapped[1], lng: navProgress.snapped[0], accuracy: liveLocation?.accuracy, heading: liveLocation?.heading }
               : liveLocation
           }
-          followUser={followUser}
+          followUser={replaying ? false : followUser}
           onFollowInterrupt={() => setFollowUser(false)}
-          navigating={Boolean(navSession)}
+          navigating={!replaying && Boolean(navSession)}
           drawMode={drawMode}
           onDrawProgress={setDrawProgress}
           drawCommand={drawCommand}
           onDrawCancel={() => { setDrawMode(null); setDrawProgress(null); }}
           onDrawComplete={handleDrawComplete}
           drawnPolygons={drawnPolygons}
-          aircraftAirports={aircraftAirports}
+          aircraftAirports={replaying ? {} : aircraftAirports}
         />
       </ErrorBoundary>
 
@@ -1921,6 +1936,7 @@ export default function Dashboard() {
         onLocate={(lat, lng) => setFlyToLocation({ lat, lng, ts: Date.now() })}
       />
 
+      <GlobalTimeline onFocus={(lat,lng)=>setFlyToLocation({lat,lng,zoom:6,ts:Date.now()})} onObject={(id,intent)=>{setGraphIntent(intent);setGraphSeed(undefined);setGraphObjectId(id);setGraphOpen(true);setIntelPanel(null);}} />
       <IntelligenceCenter context={investigationContext} busy={registering} error={investigationError}
         onExplorer={()=>{setGraphIntent('graph');setGraphObjectId(undefined);setGraphSeed(undefined);setGraphOpen(true);}}
         onHealth={()=>setIntelPanel('health')} onCorrelations={()=>setIntelPanel('correlations')}

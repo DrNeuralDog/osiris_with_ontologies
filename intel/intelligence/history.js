@@ -35,6 +35,7 @@ async function putLocation(db,objectId,kind,name,raw) {
  const lat=raw.lat,lon=raw.lon??raw.lng;
  M.check(typeof lat==='number'&&Number.isFinite(lat)&&Math.abs(lat)<=90&&typeof lon==='number'&&Number.isFinite(lon)&&Math.abs(lon)<=180,'Invalid coordinates');
  const ps=(Array.isArray(raw.provenance)?raw.provenance:[raw.provenance]).map(M.provenance);
+ if(!raw.observed_at&&['infrastructure','airport','port'].includes(kind))await writeObservation(db,objectId,{event_type:'REFERENCE_LOCATION',lat,lon,provenance:ps.map(p=>({...p,kind:'imported'})),data:{name,kind,reference:true},fetched_at:raw.fetched_at||new Date().toISOString()});
  await db.query(`INSERT INTO intelligence_object_locations(object_id,kind,name,lat,lon,observed_at,fetched_at,provenance) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
  ON CONFLICT(object_id) DO UPDATE SET kind=excluded.kind,name=excluded.name,lat=excluded.lat,lon=excluded.lon,observed_at=excluded.observed_at,fetched_at=excluded.fetched_at,provenance=excluded.provenance
  WHERE excluded.observed_at IS NULL OR intelligence_object_locations.observed_at IS NULL OR excluded.observed_at>=intelligence_object_locations.observed_at`,[objectId,kind,name,lat,lon,raw.observed_at||null,raw.fetched_at||new Date().toISOString(),JSON.stringify(ps)]);
@@ -67,6 +68,9 @@ class HistoryService {
    WHERE object_id=$1 AND ($2::text IS NULL OR metadata->'properties' ? $2) ORDER BY fetched_at DESC LIMIT 100`,[object.id,property||null])).rows;
   return {object_id:object.id,property:property||null,evidence:rows};
  }
- async prune(){return this.store.pool.query('DELETE FROM intelligence_observations WHERE id IN (SELECT id FROM intelligence_observations WHERE retained_until<now() ORDER BY retained_until LIMIT 5000)');}
+ async prune(){
+  await this.store.pool.query("DELETE FROM intelligence_correlation_versions WHERE id IN (SELECT id FROM intelligence_correlation_versions WHERE recorded_at<now()-($1::int*interval '1 day') ORDER BY recorded_at LIMIT 5000)",[Math.min(3650,Math.max(1,Number(process.env.HISTORY_RETENTION_DAYS)||90))]);
+  return this.store.pool.query('DELETE FROM intelligence_observations WHERE id IN (SELECT id FROM intelligence_observations WHERE retained_until<now() ORDER BY retained_until LIMIT 5000)');
+ }
 }
 module.exports={HistoryService,writeObservation,putLocation,observation,hash,stable};

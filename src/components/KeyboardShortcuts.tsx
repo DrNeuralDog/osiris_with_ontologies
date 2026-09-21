@@ -13,6 +13,9 @@ const SHORTCUTS = [
   { key: 'R', desc: 'Reset to global view' },
   { key: '?', desc: 'Show this help' },
   { key: 'ESC', desc: 'Close panels / popups' },
+  { key: 'Space', desc: 'Timeline focused: play / pause' },
+  { key: '← / →', desc: 'Timeline focused: step 1 minute' },
+  { key: 'End', desc: 'Timeline focused: return to live' },
 ];
 
 export default function KeyboardShortcuts() {

@@ -3,6 +3,7 @@ const M=require('../ontology/model');
 const {integer}=require('./policy');
 const {evaluate}=require('./rules');
 const {CorrelationPages}=require('./correlation-pages');
+const {retainCorrelation}=require('./correlation-history');
 class CorrelationEngine{
  constructor(store){this.store=store;this.running=false;this.lastRun=0;this.pages=new CorrelationPages();}
  async persist(candidates,now=Date.now(),evaluated=[]){
@@ -16,6 +17,7 @@ class CorrelationEngine{
     for(const row of ended)await db.query("INSERT INTO intelligence_correlation_events(correlation_id,status,changed_at,reason) VALUES($1,'EXPIRED',$2,'Current evidence no longer meets the rule; not evidence of safety')",[row.id,new Date(now)]);
     expired.push(...ended);
    }
+   for(const row of expired)await retainCorrelation(db,row.id,new Date(now));
    for(const c of candidates){
     const old=(await db.query('SELECT id,status FROM intelligence_correlations WHERE fingerprint=$1',[c.fingerprint])).rows[0];
     if(old?.status==='DISMISSED')continue;
@@ -27,6 +29,7 @@ class CorrelationEngine{
     await db.query('DELETE FROM intelligence_correlation_evidence WHERE correlation_id=$1',[id]);
     for(const [ordinal,e]of c.evidence.entries())await db.query('INSERT INTO intelligence_correlation_evidence VALUES($1,$2,$3,$4)',[id,ordinal,e.observation_id,e]);
     if(!old||old.status!=='ACTIVE')await db.query("INSERT INTO intelligence_correlation_events(correlation_id,status,changed_at,reason) VALUES($1,'ACTIVE',$2,'Rule conditions supported by timestamped evidence')",[id,at]);
+    await retainCorrelation(db,id,at);
    }
    return {matched:candidates.length,expired:expired.length};
   });
@@ -70,6 +73,7 @@ class CorrelationEngine{
  async dismiss(id){await this.get(id);return this.store.transaction(async db=>{
   const r=await db.query("UPDATE intelligence_correlations SET status='DISMISSED',resolved_at=now() WHERE id=$1 AND status<>'DISMISSED' RETURNING id",[id]);
   if(r.rowCount)await db.query("INSERT INTO intelligence_correlation_events(correlation_id,status,changed_at,reason) VALUES($1,'DISMISSED',now(),'Dismissed by local user; evidence retained')",[id]);
+  if(r.rowCount)await retainCorrelation(db,id,new Date());
   return {id,status:'DISMISSED'};
  });}
 }

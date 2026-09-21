@@ -5,6 +5,7 @@ import ForceGraph2D, { type ForceGraphMethods, type NodeObject } from 'react-for
 import { X, Crosshair, RotateCcw, Search, Network, LoaderCircle } from 'lucide-react';
 import EvidenceView from './EvidenceView';
 import ObjectHistory from './ObjectHistory';
+import { useWorldReplay } from './WorldReplayProvider';
 import { investigationView, type InvestigationIntent, type InvestigationContext } from '@/lib/investigation';
 import { intelligenceRequest } from '@/lib/intelligence';
 import type { InvestigationMapFocus } from '@/lib/intelligence';
@@ -16,6 +17,7 @@ const empty: OntologyGraph = { root_id: '', nodes: [], links: [], truncated: fal
 const tooltip = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 export default function EntityGraphPanel({ seed, objectId, intent='graph', onContext, onMap, onClose }: { seed?: InvestigationSeed; objectId?: string; intent?: InvestigationIntent; onContext?: (context: InvestigationContext) => void; onMap?: (focus: InvestigationMapFocus) => void; onClose: () => void }) {
+  const replay=useWorldReplay();
   const [detailTab, setDetailTab] = useState<'details' | 'history'>(investigationView(intent).tab);
   const [graph, setGraph] = useState<OntologyGraph>(empty);
   const [selected, setSelected] = useState<string>('');
@@ -108,6 +110,7 @@ export default function EntityGraphPanel({ seed, objectId, intent='graph', onCon
       <button className={buttonClass} onClick={reset} disabled={busy || !graph.root_id} title="Reset to root"><RotateCcw size={16} /></button>
       <button ref={closeButton} className={buttonClass} onClick={onClose} aria-label="Back to map / Close graph">Back to map <X className="inline" size={14} /></button>
     </header>
+    {replay.state.mode==='replay'&&<p className="px-3 py-1 text-xs text-cyan-300">REPLAY: history/evidence refers to retained observations. Graph relationships and object properties show the current ontology.</p>}
     <form onSubmit={e => { e.preventDefault(); void search(); }} className="flex flex-wrap gap-2 p-3 border-b border-[var(--border-primary)]">
       <select aria-label="Object type" value={type} onChange={e => setType(e.target.value)} className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs p-2">{['company', 'person', 'country', 'aircraft', 'vessel', 'ip', 'organization', 'location', 'event', 'infrastructure', 'airport', 'port', 'satellite', 'camera'].map(t => <option key={t}>{t}</option>)}</select>
       <input aria-label="Object name or identifier" value={query} onChange={e => setQuery(e.target.value)} placeholder="Name, Wikidata QID, ICAO24, MMSI or IP…" className="flex-1 min-w-36 bg-transparent border border-[var(--border-primary)] rounded px-2 text-xs" />
@@ -156,7 +159,7 @@ export default function EntityGraphPanel({ seed, objectId, intent='graph', onCon
           <button disabled={busy} className={`${buttonClass} ml-1`} onClick={() => void run(signal => ontologyRequest(`objects/${selectedObject.id}/graph`, undefined, signal), true)}>Make root</button>
           <div className="text-[10px] break-all text-[var(--text-secondary)]">{selectedObject.id}</div>
           <div className="flex gap-2"><button className={buttonClass} aria-pressed={detailTab === 'details'} onClick={() => setDetailTab('details')}>DETAILS / EVIDENCE</button><button className={buttonClass} aria-pressed={detailTab === 'history'} onClick={() => setDetailTab('history')}>HISTORY</button></div>
-          {detailTab === 'history' ? <ObjectHistory key={selectedObject.id} objectId={selectedObject.id} onMap={onMap} /> : <><details open><summary className="cursor-pointer text-xs">Properties & identifiers</summary><pre className="text-[11px] whitespace-pre-wrap break-words py-2">{JSON.stringify({ external_ids: selectedObject.external_ids, ...selectedObject.properties }, null, 2)}</pre></details><details open><summary className="cursor-pointer text-xs mb-2">Provenance (latest 50) / property evidence</summary><EvidenceView items={selectedObject.provenance} /></details></>}
+          {detailTab === 'history' ? <ObjectHistory key={selectedObject.id} objectId={selectedObject.id} objectType={selectedObject.type} objectName={selectedObject.canonical_name} onMap={onMap} onJump={onClose} /> : <>{replay.state.mode==='replay'&&replay.selection?.object_id===selectedObject.id&&replay.selection.observation&&<section className="border border-cyan-400/40 p-2"><h4 className="text-cyan-300 text-xs">HISTORICAL EVIDENCE · {replay.selection.observation.timeline_at}</h4><EvidenceView items={replay.selection.observation.provenance}/><pre className="text-[10px] whitespace-pre-wrap">{JSON.stringify(replay.selection.observation.data,null,2)}</pre></section>}<details open><summary className="cursor-pointer text-xs">Properties & identifiers</summary><pre className="text-[11px] whitespace-pre-wrap break-words py-2">{JSON.stringify({ external_ids: selectedObject.external_ids, ...selectedObject.properties }, null, 2)}</pre></details><details open><summary className="cursor-pointer text-xs mb-2">Provenance (latest 50) / property evidence</summary><EvidenceView items={selectedObject.provenance} /></details></>}
           <div className="text-xs space-y-1">{graph.links.filter(l => l.source === selectedObject.id || l.target === selectedObject.id).map(l => <button className="block text-left text-[var(--cyan-primary)] hover:underline" key={l.id} onClick={() => setSelectedLink(l)}>{l.source === selectedObject.id ? '→' : '←'} {l.link_type} · {graph.nodes.find(n => n.id === (l.source === selectedObject.id ? l.target : l.source))?.canonical_name}</button>)}</div>
         </> : <p className="text-xs text-[var(--text-secondary)]">Select a node or relationship to inspect its evidence.</p>}
         <details><summary className="cursor-pointer text-xs">Loaded objects · keyboard navigation</summary>{graph.nodes.map(n => <button disabled={busy} className="block text-left text-xs py-1 hover:underline" key={n.id} onClick={() => expand(n)}>{n.canonical_name} · {n.type}</button>)}</details>

@@ -13,6 +13,8 @@ import SatelliteCard, { type SatelliteDetail } from '@/components/SatelliteCard'
 import { createRoot } from 'react-dom/client';
 import InvestigationActions from '@/components/InvestigationActions';
 import { investigationPoint } from '@/lib/investigation';
+import { useReplayMap } from './useReplayMap';
+import type { ReplayItem } from '@/lib/replay';
 import CctvPreviews, { type PreviewCamera } from '@/components/CctvPreviews';
 import MapControls from '@/components/MapControls';
 import LiveNewsPreviews, { type PreviewFeed } from '@/components/LiveNewsPreviews';
@@ -36,6 +38,8 @@ interface SatelliteRow {
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface OsirisMapProps {
+  replayItems?: ReplayItem[] | null;
+  onReplaySelect?: (item: ReplayItem) => void;
   investigation?: InvestigationMapFocus | null;
   healthyCameraIds?: ReadonlySet<string> | null;
   data: any;
@@ -164,7 +168,7 @@ interface AlertPinFeature {
   properties: AlertPinProps;
 }
 
-function OsirisMap({ investigation = null, healthyCameraIds = null, data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, alertPinIds = null, projection = 'globe', terrainEnabled = false, terrainRetry = 0, terrainFocus = 0, onTerrainStatusChange, mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', drawnPolygons = [], arcgisLayers = [], drawMode = null, onDrawComplete, onDrawProgress, onDrawCancel, drawCommand = null, onMapCenter, route = null, userLocation = null, followUser = false, onFollowInterrupt, navigating = false, aircraftAirports = {} }: OsirisMapProps) {
+function OsirisMap({ replayItems = null, onReplaySelect, investigation = null, healthyCameraIds = null, data, activeLayers, onEntityClick, onMouseCoords, onRightClick, onViewStateChange, flyToLocation, alertPinIds = null, projection = 'globe', terrainEnabled = false, terrainRetry = 0, terrainFocus = 0, onTerrainStatusChange, mapStyle = 'dark', sweepData, scanTargets = [], demoMode = false, theme = 'core', drawnPolygons = [], arcgisLayers = [], drawMode = null, onDrawComplete, onDrawProgress, onDrawCancel, drawCommand = null, onMapCenter, route = null, userLocation = null, followUser = false, onFollowInterrupt, navigating = false, aircraftAirports = {} }: OsirisMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -173,6 +177,9 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
   const alertPinsRef = useRef<AlertPinFeature[]>([]);
   const openAlertPinRef = useRef<((id: string) => void) | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  useReplayMap(mapRef, mapReady, replayItems, onReplaySelect);
+  const replayMode = replayItems !== null;
+  useEffect(() => { if (replayMode) popupRef.current?.remove(); }, [replayMode]);
 
   // Do not replay an earlier explicit zoom request after theme/retry remounts.
   const lastTerrainFocus = useRef(terrainFocus);
@@ -3279,7 +3286,7 @@ function OsirisMap({ investigation = null, healthyCameraIds = null, data, active
           })}
         />
       )}
-      {selectedSat && <SatelliteCard sat={selectedSat} onClose={clearSat} onInvestigate={(seed, intent) => onEntityClick?.({ investigation_seed: seed, investigation_intent: intent })} />}
+      {!replayItems && selectedSat && <SatelliteCard sat={selectedSat} onClose={clearSat} onInvestigate={(seed, intent) => onEntityClick?.({ investigation_seed: seed, investigation_intent: intent })} />}
       {mapReady && <MapControls mapRef={mapRef} onInteract={onFollowInterrupt} />}
     </>
   );

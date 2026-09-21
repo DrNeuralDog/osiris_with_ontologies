@@ -6,9 +6,12 @@ const {POLICIES}=require('./policy');
 const {THRESHOLDS}=require('./rules');
 const {IntelligenceSummary}=require('./summary');
 const {investigate,objectContext}=require('./investigate');
+const {TimelineService}=require('./timeline');
 function intelligenceRoutes(store){
  const router=express.Router(),health=new SourceHealth(store),engine=new CorrelationEngine(store);
  const summary=new IntelligenceSummary(store);
+ const timeline=new TimelineService(store);
+ for(const action of ['state','events','coverage','chunk'])router.get(`/timeline/${action}`,async(req,res)=>res.json(await timeline[action](req.query)));
  router.use(express.json({limit:'128kb'}));
  router.get('/summary',async(req,res)=>{M.check(Object.keys(req.query).length===0,'Summary takes no query');res.json(await summary.get());});
  router.post('/investigate',async(req,res)=>res.json(await investigate(store,req.body)));
