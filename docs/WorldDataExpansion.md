@@ -17,7 +17,7 @@
 | API | Назначение / ограничения |
 |---|---|
 | `GET /api/world/infrastructure?bbox=W,S,E,N&categories=power,substation` | OSM + локальный GEM; categories из allowlist; OSM 500 элементов; объединённый ответ до 700 |
-| `GET /api/world/weather?bbox=W,S,E,N` | Один batch Open-Meteo, 9–16 координат |
+| `GET /api/world/weather?bbox=W,S,E,N` | Один batch Open-Meteo, до 81 координаты; zoom/quality, диагностика |
 | `GET /api/world/radar` | Только metadata доступных прошлых кадров |
 | `GET /api/world-radar/{time_ms}/{z}/{x}/{y}` | PNG только известного frame; фиксированный host/path; zoom <=7 |
 | `GET /api/world/conflicts[?bbox=…]` | До 600 нормализованных сообщений, отдельный статус каждого provider |
@@ -29,7 +29,7 @@
 
 OSM cache: час, 20 viewport queries, один in-flight запрос, минимум 30 секунд между новыми запросами, локальный бюджет 100/сутки. Overpass ограничен 15 сек/32 MiB серверной обработки; ответ считывается до 8 MiB. После ошибки backoff от двух минут до часа; fallback fan-out по публичным mirrors не выполняется. Это режим локального прототипа; для многопользовательского сервиса нужен собственный provider/extract.
 
-Open-Meteo: cache 10 минут, 24 viewport keys, <=16 точек на batch, максимум 500 новых batches/сутки на процесс. Учитывайте также существующий weather worker и условия аккаунта. Суточные бюджеты process-local сбрасываются после рестарта; это дополнительная защита, не замена upstream quotas. UI debounce 800 ms, polling 120 секунд, данные из server cache; запросов на animation frame нет.
+Open-Meteo: cache 10 минут, 24 viewport keys, <=81 точки на batch, максимум 100 новых batches/сутки на процесс. Учитывайте также существующий weather worker и условия аккаунта. Суточные бюджеты process-local сбрасываются после рестарта; это дополнительная защита, не замена upstream quotas. UI debounce 900 ms для погоды, polling 120 секунд, данные из server cache; запросов на animation frame нет.
 
 ## Storage, provenance и время
 
@@ -54,7 +54,7 @@ OSM line/polygon/multiline geometry сохраняется до 400 vertices. Е
 | Provider | Доступ, условия и решение |
 |---|---|
 | OSM / Overpass | Публичный documented API, без auth; [правила public instances](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html), [ODbL / attribution](https://www.openstreetmap.org/copyright). Bounded local viewport, без глобального crawl. Реальный HTTP smoke успешен. |
-| Open-Meteo | [Документация](https://open-meteo.com/en/docs), [условия free/commercial и quotas](https://open-meteo.com/en/pricing). Free API для non-commercial; CC BY 4.0 attribution. Optional `OPEN_METEO_API_KEY` включает customer endpoint. Реальные текущие поля доступны. |
+| Open-Meteo | [Документация](https://open-meteo.com/en/docs), [условия free/commercial и quotas](https://open-meteo.com/en/pricing). Free API для non-commercial; CC BY 4.0 attribution. Customer endpoint включается явно: `OPEN_METEO_API_MODE=customer` + совместимый `OPEN_METEO_API_KEY`. Реальные текущие поля доступны. |
 | RainViewer | [API](https://www.rainviewer.com/api/weather-maps-api.html), [актуальные изменения 2026](https://www.rainviewer.com/api/transition-faq.html), [Universal Blue = 2](https://www.rainviewer.com/api/color-schemes.html). Только past ~2h/10min; maxzoom 7, 100 req/IP/min; attribution, best effort, без SLA. Старые nowcast/IR не используются. |
 | GEM | Только локальный официальный export с metadata конкретного release. [Лицензия](https://globalenergymonitor.org/creative-commons-license), [официальные metadata релизов](https://github.com/GlobalEnergyMonitor/gem-tracker-metadata-audit). Не скачиваем формы/CAPTCHA и не предполагаем одинаковые права для всех файлов. |
 | GDELT | Повторно используется `fetchGdeltEvents`; [15-minute exports](https://gdeltproject.org/data.html), [поля и geocoding](https://data.gdeltproject.org/documentation/GDELT-Event_Codebook-V2.0.pdf). Source articles retain copyright. Реальные сообщения получены. Геокод — centroid названного места, не точная траектория/цель. |
@@ -82,7 +82,7 @@ Importer создаёт `data/imports/gem/catalog.geojson` с license metadata; 
 ## Ограничения V1
 
 - Не полная глобальная инфраструктурная база: public Overpass — локальный bounded prototype, импорт GEM опционален. Multi-user deployment требует отдельного провайдера.
-- Weather — конечная модельная сетка с цветными samples и vectors, не сенсорные измерения и не непрерывное высокодетальное поле. Один scalar color layer одновременно.
+- Weather — интерполированное модельное WebGL-поле и стрелки экранного размера. Один scalar color layer одновременно; ветер/radar независимы. [Настройки, диагностика и ограничения](WeatherIntelligence.md).
 - Исторические radar frames доступны только в текущем окне провайдера. Глобальный архив grids/tiles не создаётся.
 - Нет подтверждённого live Drone/Missile feed без разрешённого upstream доступа. Переключатели/нормализованные types готовы; отсутствие данных не заменяется вымышленными reports.
 - Optional token adapters покрыты локальными проверками; authenticated production API без пользовательских credentials проверить невозможно. UkraineAlarm/GOES/Detector — обозначенные неподключённые интеграции, не готовые источники.

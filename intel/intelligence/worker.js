@@ -37,7 +37,7 @@ class IntelligenceWorker{
    const response=await fetch(base+path,{redirect:'error',signal:AbortSignal.timeout(id==='flights'?60000:30000)});
    if(!response.ok)throw Object.assign(new Error(`HTTP_${response.status}`),{status:response.status});
    const body=await limitedJson(response);if(body.error)throw new Error('UPSTREAM_UNAVAILABLE');
-   const records=body.total??body.total_ships??body.airports?.length??body.indicators?.length??body.events?.length??0;
+   const records=body.total??body.total_ships??body.airports?.length??body.indicators?.length??body.events?.length??body.records?.length??0;
    if(id==='flights'&&(!body.total||String(body.source).includes('stale')))throw new Error('EMPTY_OR_STALE');
    if(id==='fires'&&body.source==='Unknown')throw new Error('UPSTREAM_UNAVAILABLE');
    let imported=0;
@@ -48,6 +48,11 @@ class IntelligenceWorker{
    const observed=id==='flights'?['commercial_flights','private_flights','private_jets','military_flights'].flatMap(k=>body[k]||[]):id==='maritime'?body.ships||[]:[];
    const dataAt=[...observed.map(r=>iso(r.observed_at)),...normalizeFeed(id,body).map(r=>r.observed_at)].filter(Boolean).sort().at(-1)||null;
    await this.health.record(`feed:${id}`,{ok:true,latency_ms:Date.now()-start,record_count:records,http_status:response.status,data_at:dataAt});
+   if(id==='news'||id==='world-conflicts'){
+    const normalized=id==='news'?normalizeFeed('news',body).filter(r=>r.data.civilian_warning):body.records||[];
+    const diagnostics={fetched:records,classified:normalized.length,geolocated:normalized.filter(r=>r.lat!=null).length,observation_upserts:imported,checked_at:new Date().toISOString(),providers:id==='world-conflicts'?body.providers:undefined,clock:id==='world-conflicts'?body.clock:undefined,scope:id==='news'?'Explicit civil warning and auditory wording only':'Existing world adapters'};
+    await this.store.pool.query("UPDATE intelligence_sources SET coverage_metadata=coverage_metadata || jsonb_build_object('ingestion',$2::jsonb) WHERE id=$1",[`feed:${id}`,JSON.stringify(diagnostics)]);
+   }
    this.failures.set(id,0);this.lastResult={source:id,imported,at:new Date().toISOString()};this.due.set(id,Date.now()+interval*1000);
    if(imported>0)await this.store.pool.query("UPDATE intelligence_worker_state SET last_ingestion_at=now() WHERE id='main'");
   }catch(error){

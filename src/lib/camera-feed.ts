@@ -114,3 +114,13 @@ export function offPlatformView(state: {
   // confident label is worse than no picture.
   return state.offline ? 'offline' : 'inline';
 }
+
+/** Numeric Skyline snapshot IDs can be reused. Require current page identity, not HTTP 200. */
+export function skylineSnapshotMatches(camera: ResolvableCamera, sourceId?: string): boolean {
+  if (!camera.external_url || !isSkylineUrl(camera.external_url) || !camera.feed_url) return true;
+  try {
+    const feed = camera.feed_url.startsWith('/api/cctv/proxy?') ? new URL(camera.feed_url, 'http://catalog.invalid').searchParams.get('url') : camera.feed_url;
+    const id = feed?.match(/^https:\/\/cdn(?:2)?\.skylinewebcams\.com\/live([0-9]+)\.jpg(?:[?#]|$)/)?.[1];
+    return !!id && id === sourceId;
+  } catch { return false; }
+}

@@ -5,6 +5,7 @@ export type InfraCategory = typeof INFRA_CATEGORIES[number];
 export const CONFLICT_TYPES = [...airPolicy.taxonomy,'AIR_RAID_ALERT','DRONE_REPORT','DRONE_ATTACK','MISSILE_REPORT','MISSILE_LAUNCH','GUIDED_BOMB_REPORT','AIR_DEFENSE_ACTIVITY','INTERCEPTION_REPORT','EXPLOSION_REPORT','AIRSTRIKE','MILITARY_STRIKE','ARTILLERY','GROUND_CLASH','INFRASTRUCTURE_STRIKE_REPORT','CONFLICT_EVENT'] as const;
 export type Precision = 'EXACT_SOURCE_COORDINATE'|'LOCALITY'|'DISTRICT'|'REGION'|'APPROXIMATE'|'UNKNOWN';
 export interface WorldRecord {
+ object_id?:string;
  id:string; provider:string; name:string; domain:'infrastructure'|'weather'|'conflict'; subtype:string;
  lat:number|null; lon:number|null; observed_at:string|null; fetched_at:string; url:string;
  evidence_state:'IMPORTED'|'DERIVED'|'REPORTED'; confidence:number|null; extraction_method:string;
@@ -22,7 +23,7 @@ export function bounds(raw:string|null):Bounds {
 }
 export const inside=(r:Pick<WorldRecord,'lat'|'lon'>,b:Bounds)=>r.lat!==null&&r.lon!==null&&r.lon>=b[0]&&r.lon<=b[2]&&r.lat>=b[1]&&r.lat<=b[3];
 export function categories(raw:string|null):InfraCategory[]{const c=[...new Set(raw?.split(',')||[])];if(!c.length||c.some(v=>!INFRA_CATEGORIES.includes(v as InfraCategory)))throw new Error('INVALID_CATEGORIES');return c as InfraCategory[];}
-export const worldSeed=(r:WorldRecord)=>({type:'world',id:r.id,name:r.name,provider:r.provider,record:{...r,lng:r.lon}});
+export const worldSeed=(r:WorldRecord)=>r.object_id?{type:'existing',id:r.object_id,name:r.name,record:{}}:{type:'world',id:r.id,name:r.name,provider:r.provider,record:{...r,lng:r.lon}};
 export const WORLD_LAYERS = {
  infra_power:'Power plants',infra_substation:'Substations',infra_transmission:'Transmission',infra_pipeline:'Oil / gas pipelines',infra_terminal:'Energy terminals',infra_telecom:'Telecom',infra_data_center:'Data centers',infra_dam:'Dams',infra_transport:'Transport hubs',
  wx_wind:'Wind / gusts',wx_precipitation:'Precipitation',wx_cloud:'Cloud cover',wx_visibility:'Visibility',wx_temperature:'Temperature',wx_pressure:'Pressure',wx_radar:'Rain radar',
@@ -30,4 +31,9 @@ export const WORLD_LAYERS = {
 };
 export const WORLD_DEFAULTS=Object.fromEntries(Object.keys(WORLD_LAYERS).map(k=>[k,false])) as Record<keyof typeof WORLD_LAYERS,boolean>;
 export function toggleWorldLayer(prev:Record<string,boolean>,key:string){const next={...prev,[key]:!prev[key]};if(next[key]&&['wx_precipitation','wx_cloud','wx_visibility','wx_temperature','wx_pressure'].includes(key))for(const k of ['wx_precipitation','wx_cloud','wx_visibility','wx_temperature','wx_pressure'])if(k!==key)next[k]=false;return next;}
-export function conflictLayer(type:string){return /DRONE/.test(type)?'conflict_drone':/MISSILE/.test(type)?'conflict_missile':/AIR|BOMB|INTERCEPTION/.test(type)?'conflict_air':'conflict_other';}
+export function toggleWorldLayerGroup(prev:Record<string,boolean>,keys:string[]){const disable=keys.some(k=>prev[k]);let next={...prev};for(const key of keys){if(disable)next[key]=false;else next=toggleWorldLayer(next,key);}return next;}
+export function conflictLayer(type:string){return type==='ALL_CLEAR'?'conflict_air':/DRONE/.test(type)?'conflict_drone':/MISSILE/.test(type)?'conflict_missile':/AIR|BOMB|INTERCEPTION/.test(type)?'conflict_air':'conflict_other';}
+export function recordMatchesThreatLayer(r:Pick<WorldRecord,'subtype'|'properties'>,layer:string){
+ const explicit=Array.isArray(r.properties.threat_types)?r.properties.threat_types.filter((v):v is string=>typeof v==='string').slice(0,24):[];
+ return [r.subtype,...explicit].some(type=>(type==='ROCKET_ALERT'?'conflict_missile':conflictLayer(type))===layer);
+}

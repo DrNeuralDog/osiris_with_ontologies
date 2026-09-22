@@ -31,9 +31,9 @@
 | alerts.in.ua | Optional адаптер официальных сообщений через волонтёрский relay. Bearer `ALERTS_IN_UA_TOKEN` только server-side. Active endpoint и документированная regional history, Last-Modified / If-Modified-Since / 304. [Документация](https://devs.alerts.in.ua/) |
 | UkraineAlarm | Optional interface, KEY_REQUIRED без ключа. Даже с `UKRAINE_ALARM_API_KEY` требуется выданный провайдером API contract/access; непроверенный endpoint не вызывается. [Запрос доступа](https://api.ukrainealarm.com/) |
 | Israel Home Front Command | DOCUMENTED_API_REQUIRED. Проверенного разрешённого developer interface нет; hidden endpoints и bypass не используются. [Официальный сайт](https://www.oref.org.il/eng) |
-| GDELT / War-Tracker | Существующие global Stage 3 feeds. War-Tracker требует partner key. Это STRUCTURED_OSINT, не гражданская служба оповещения. Покрытие РФ и других стран зависит от реальных сообщений. |
+| GDELT / War-Tracker | Существующие global Stage 3 feeds. War-Tracker пробует документированный civil-alert query без обязательного локального ключа; отказ провайдера означает ACCESS_REQUIRED. Это STRUCTURED_OSINT, не гражданская служба оповещения. Покрытие РФ и других стран зависит от реальных сообщений. |
 | Detector AERO | Только future capability: документированный API или письменное разрешение. Не подключён, scraping отсутствует. |
-| Public reports | Ручная транскрипция конкретного публичного сообщения с URL, ID, временем и географической точностью. Автоматический Telegram acoustic feed не добавлен. |
+| Public reports | Ручная транскрипция конкретного публичного сообщения с URL, ID, временем и географической точностью. Existing Live Alerts автоматически передаёт явно классифицированные гражданские предупреждения и сообщения о звуке; второй scraper отсутствует. |
 
 alerts.in.ua: cache/coalescing 120 секунд, максимум active + одна regional-history загрузка за цикл, бюджет 1500 циклов/сутки. Это ниже опубликованных лимитов 8–10 запросов/минуту (жёсткий 12). До 32 недавно встреченных регионов проверяются по очереди. Отбой приходит только из явного `finished_at`. Исчезновение из active list и IoT `N` не преобразуются в отбой. После рестарта список regional-history обхода восстанавливается из полученных active alerts; до повторного подтверждения возможен UNKNOWN. Учитывайте условия supplementary use и attribution relay; это не замена официальной системе оповещения.
 
@@ -41,7 +41,7 @@ alerts.in.ua: cache/coalescing 120 секунд, максимум active + од�
 
 ## Taxonomy, evidence и география
 
-Единый `intel/intelligence/air-policy.json` содержит AIR_RAID_ALERT, PRE_ALERT, ALL_CLEAR, DRONE_THREAT/REPORT/ATTACK, ROCKET_ALERT, MISSILE_THREAT/REPORT/LAUNCH, BALLISTIC_MISSILE_THREAT, CRUISE_MISSILE_THREAT, GUIDED_BOMB_THREAT, AIR_DEFENSE_ACTIVITY, INTERCEPTION_REPORT, EXPLOSION_REPORT, AIRSTRIKE, MILITARY_STRIKE, HEARD_EXPLOSION и CONFLICT_EVENT.
+Единый `intel/intelligence/air-policy.json` содержит AIR_RAID_ALERT, PRE_ALERT, ALL_CLEAR, DRONE_THREAT/REPORT/ATTACK, ROCKET_ALERT, MISSILE_THREAT/REPORT/LAUNCH, BALLISTIC_MISSILE_THREAT, CRUISE_MISSILE_THREAT, GUIDED_BOMB_THREAT, AIR_DEFENSE_ACTIVITY, INTERCEPTION_REPORT, EXPLOSION_REPORT, AIRSTRIKE, MILITARY_STRIKE, HEARD_EXPLOSION, HEARD_SOUND и CONFLICT_EVENT.
 
 Mapper сохраняет `provider_raw_type` и raw metadata. Подтипы alerts.in.ua сохраняются в `threat_types`; неподдержанные значения остаются raw. Активность авиации не превращается в ракетную угрозу. Source class OFFICIAL / STRUCTURED_OSINT / PUBLIC_REPORT отличается от evidence state REPORTED / DERIVED: официальное сообщение тоже не является локальным измерением OSIRIS. Числовая confidence без значения провайдера остаётся неизвестной.
 
@@ -90,3 +90,5 @@ Windows + Docker Desktop: `docker compose up -d --build`, затем прежн�
 Frontend: `npm test`, `npx tsc --noEmit`, `npm run build`. Backend: `cd intel; npm test` при настроенном PostgreSQL; Docker-вариант после build: `docker compose run --rm -T --no-deps osiris-intel npm test`. Тесты создают изолированные схемы и не подменяют production reports. CI продолжает Ubuntu/Windows frontend + настоящий PostgreSQL 16 backend.
 
 Ограничения: optional providers без доступа не проверяются live; нет готового официального глобального coverage, административных polygon datasets, автоматического witness feed, полноценного акустического/terrain solver или доказанной независимости всех OSINT-перепечаток. Эти пробелы отображаются, не заменяются вымышленными данными.
+
+Связка Live Alerts, retained map API, значки и точные ограничения: [MilitaryEventAggregation.md](MilitaryEventAggregation.md).

@@ -10,6 +10,7 @@ function normalizeFeed(feed,body){
  if(feed==='weather')for(const r of body.events||[]){const at=iso(r.date);if(!r.id||!point(r)||!at||!['weatherAlerts','severeStorms','gdacs'].includes(r.category))continue;rows.push({key:r.id,name:r.title,type:'event',event_type:'SEVERE_WEATHER',observed_at:at,valid_to:iso(r.expires),lat:r.lat,lon:r.lng,data:{severity:r.severity,category:r.category,location_precision:'representative_point'},provenance:[proof(r.provider||'OSIRIS weather',r.id,at,/^https:\/\//.test(r.source)?r.source:null)]});}
  if(feed==='cyber-attacks')for(const r of body.indicators||[]){const at=iso(r.last_online||r.first_seen);if(!at||!r.ip)continue;try{M.identifier('ip',r.ip);}catch{continue;}rows.push({key:r.ip,name:r.ip,type:'ip',identifiers:[{namespace:'ip',value:r.ip}],event_type:'CYBER_INDICATOR',observed_at:at,data:{status:r.status,malware:r.malware,port:r.port,as_number:r.as_number,source_record_id:r.id,location_precision:r.location_precision},provenance:[proof('abuse.ch Feodo Tracker',r.id,at,body.source_url)]});}
  if(feed==='news')for(const r of body.news||[]){const at=iso(r.published),place=r.place,p=Array.isArray(r.coords)?{lat:r.coords[0],lon:r.coords[1]}:place;if(!at||!place||!point(p)||!r.link||['country','country-anchor','region'].includes(r.location_precision))continue;rows.push({key:hash(r.link),name:r.title||r.headline||r.link,type:'event',event_type:'NEWS_EVENT',observed_at:at,lat:p.lat,lon:p.lng??p.lon,data:{title:r.title,location_precision:place.precision||'reported_place'},provenance:[proof(r.source_name||r.source||'OSIRIS news',r.link,at,r.link,'imported',{location_method:'Existing OSIRIS place-name resolver; derived coordinates, not a measured event position',location_state:'derived',place:place.name})]});}
+ if(feed==='news')for(const item of (body.news||[]).slice(0,200)){const warning=require('./civilian-reports').newsWarning(item);if(warning)rows.push(warning);}
  return rows.filter(r=>Date.parse(r.observed_at)<=Date.now()+300000).sort((a,b)=>Date.parse(b.observed_at)-Date.parse(a.observed_at));
 }
 class FeedIngestor{
@@ -19,7 +20,8 @@ class FeedIngestor{
   // Small transactions with no network operations under the ontology lock.
   for(let offset=0;offset<rows.length;offset+=25)await this.store.transaction(async db=>{
    for(const r of rows.slice(offset,offset+25)){
-    const object=await this.store.putObject(db,{type:r.type,canonical_name:String(r.name).slice(0,300),external_ids:r.identifiers||[{namespace:`source:${feed}`,value:r.key}],properties:{event_type:r.event_type},provenance:r.provenance});
+    // A warning is an interpretation of the same news record, not a change of its identity.
+    const object=await this.store.putObject(db,{type:r.type,canonical_name:String(r.name).slice(0,300),external_ids:r.identifiers||[{namespace:`source:${feed}`,value:r.key}],properties:{event_type:feed==='news'?'NEWS_EVENT':r.event_type},provenance:r.provenance});
     await writeObservation(db,object,{...r,source_id:`feed:${feed}`});imported++;
     if(r.event_type==='CYBER_INDICATOR'&&r.data.as_number){
      let asn;try{asn=M.identifier('asn',String(r.data.as_number));}catch{continue;}

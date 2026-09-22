@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stealthFetch } from '@/lib/stealthFetch';
 import { cachedSource, isStale, peekSource, seedSource } from '@/lib/sourceCache';
-import { buildPayload, clearPayload, getPayload, readSnapshot, writeSnapshot, type Payload, type RegionCameras } from '@/lib/cctv-snapshot';
+import { indexCameras, buildPayload, clearPayload, getPayload, readSnapshot, writeSnapshot, type Payload, type RegionCameras } from '@/lib/cctv-snapshot';
 import { createPool } from '@/lib/fetch-pool';
 
 export const maxDuration = 60;
@@ -1003,6 +1003,8 @@ export async function GET(request: Request) {
       }
     }
 
+    // Regional map responses must populate ID lookup without a global rebuild.
+    indexCameras(allCameras);
     const cacheControl = pendingRegions.length > 0 || allCameras.length < 50
       ? 'no-store, max-age=0' 
       : 'public, s-maxage=300, stale-while-revalidate=600';

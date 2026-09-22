@@ -100,7 +100,7 @@ export const clearPayload = () => { payload = undefined; };
 // Shared across Next route bundles in one server process. No upstream reads.
 const catalogueGlobal = globalThis as typeof globalThis & { __osirisCameraIndex?: { records: Map<string, Camera>; restoredAt: number; pending?: Promise<void> } };
 const cameraIndex = catalogueGlobal.__osirisCameraIndex ??= { records: new Map<string, Camera>(), restoredAt: 0, pending: undefined as Promise<void> | undefined };
-function indexCameras(cameras: Camera[]) {
+export function indexCameras(cameras: Camera[]) {
   for (const camera of cameras.slice(0, 60000)) {
     if (typeof camera.id !== 'string' || camera.id.length > 200) continue;
     if (cameraIndex.records.size >= 60000 && !cameraIndex.records.has(camera.id)) cameraIndex.records.delete(cameraIndex.records.keys().next().value!);

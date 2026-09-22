@@ -5,7 +5,7 @@ function decay(at, now) { const age = (now - (typeof at === 'number' ? at : Date
     return 'FUTURE'; for (const [key, max] of Object.entries(P.decay_seconds))
     if (age < max)
         return { recent: 'RECENT', fresh: 'FRESH', aging: 'AGING', history: 'STALE' }[key]; return 'HISTORY'; }
-function family(type) { return type === 'HEARD_EXPLOSION' ? 'ACOUSTIC' : ['EXPLOSION_REPORT', 'AIRSTRIKE', 'MILITARY_STRIKE', 'CONFLICT_EVENT'].includes(type) ? 'CONFLICT' : 'AIR'; }
+function family(type) { return type.startsWith('HEARD_') ? 'ACOUSTIC' : ['EXPLOSION_REPORT', 'AIRSTRIKE', 'MILITARY_STRIKE', 'CONFLICT_EVENT'].includes(type) ? 'CONFLICT' : 'AIR'; }
 function distance(a, b) { const rad = Math.PI / 180, dlat = (b.lat - a.lat) * rad, dlon = (b.lon - a.lon) * rad; return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(Math.sin(dlat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dlon / 2) ** 2))); }
 const located = r => Number.isFinite(r.lat) && Number.isFinite(r.lon);
 // Repeated versions from one provider are one current signal; cross-provider records remain separate.

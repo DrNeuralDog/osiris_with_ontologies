@@ -16,9 +16,9 @@ describe('catalog-bound camera probes', () => {
     vi.mocked(lookupCachedCamera).mockResolvedValue({ id: 'frame', name: 'Camera', feed_url: 'https://known.example/frame.jpg' });
     vi.mocked(safeFetch).mockResolvedValue(new Response(new Uint8Array([255,216,255,...Array(50).fill(0)]), { status: 200 }));
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({}, { status: 404 })).mockResolvedValueOnce(Response.json({ accepted: 1 }));
-    const response = await POST(request('frame')); expect(response.status).toBe(200); expect((await response.json()).status).toBe('FRAME_AVAILABLE');
+    const response = await POST(request('frame')); expect(response.status).toBe(200); expect((await response.json()).status).toBe('SNAPSHOT_AVAILABLE');
     expect(vi.mocked(safeFetch).mock.calls[0][1]?.maxRedirects).toBe(0);
-    const report = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body)); expect(report.reports[0].sample.ok).toBe(true); expect(report.reports[0].sample.data_at).toBeUndefined();
+    const report = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body)); expect(report.reports[0].sample.camera_media).toEqual({snapshot_status:'SNAPSHOT_AVAILABLE',stream_status:'UNKNOWN'}); expect(report.reports[0].sample.ok).toBe(true); expect(report.reports[0].sample.data_at).toBeUndefined();
   });
   it('honors persistent backoff without probing or loading the catalog', async () => { vi.mocked(fetch).mockResolvedValueOnce(Response.json({ status: 'OFFLINE', next_check_at: new Date(Date.now() + 300000).toISOString() })); expect((await (await POST(request('backoff'))).json()).cached).toBe(true); expect(catalog).not.toHaveBeenCalled(); expect(safeFetch).not.toHaveBeenCalled(); });
 });

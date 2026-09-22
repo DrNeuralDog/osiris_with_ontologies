@@ -4,7 +4,7 @@ const { located } = require('./air-core');
 function audibility(event, input = {}, weather = null, at = Date.now()) {
     M.check(input.scenario === undefined || typeof input.scenario === 'boolean', 'Invalid scenario flag');
     const base = { model_version: 'acoustic-sensitivity-v1', evidence_state: 'DERIVED', model: 'SIMPLIFIED ACOUSTIC MODEL', location_precision: event.precision, weather_timestamp: weather?.at || null, terrain_state: 'UNAVAILABLE', land_cover_state: 'UNAVAILABLE', uncertainty: event.precision === 'EXACT_SOURCE_COORDINATE' ? 'HIGH' : 'VERY_HIGH', zones: [], assumptions: ['Free-field spherical spreading; not a certified blast or hearing-safety model.', 'No frequency spectrum, atmospheric absorption, terrain screening or urban reflections.', 'Zone labels describe an explicit sensitivity scenario, not observed audibility or calibrated probabilities.'] };
-    if (!located(event) || event.type === 'HEARD_EXPLOSION' || event.precision === 'UNKNOWN')
+    if (!located(event) || event.type.startsWith('HEARD_') || event.data?.sound_source_position_known === false || event.precision === 'UNKNOWN')
         return { ...base, status: 'UNKNOWN_SOURCE_POSITION' };
     if (!['EXPLOSION_REPORT', 'AIRSTRIKE', 'MILITARY_STRIKE', 'INTERCEPTION_REPORT'].includes(event.type))
         return { ...base, status: 'EVENT_SOUND_CATEGORY_UNAVAILABLE' };

@@ -3,6 +3,7 @@ import { GET, clearCctvRefreshes } from './route';
 import { stealthFetch } from '@/lib/stealthFetch';
 import { clearSourceCache } from '@/lib/sourceCache';
 import { join } from 'node:path';
+import { lookupCachedCamera } from '@/lib/cctv-snapshot';
 
 /* GET reads the saved catalogue before it dispatches anything. That is real
    disk I/O, so a case must let it settle before advancing fake time —
@@ -28,6 +29,13 @@ describe('CCTV partial responses', () => {
     expect(body.pendingRegions).toEqual([]);
   });
 
+  it('regional responses register camera IDs without a global catalogue fetch', async () => {
+    vi.mocked(stealthFetch).mockResolvedValue(Response.json([{ id: 'JamCams_RegionalOnly', lat: 51.5, lon: -0.1, commonName: 'Regional lookup' }]));
+    const body = await (await GET(new Request('http://localhost/api/cctv?region=uk'))).json();
+    const calls = vi.mocked(stealthFetch).mock.calls.length;
+    expect(await lookupCachedCamera(body.cameras[0].id)).toMatchObject({ name: 'Regional lookup' });
+    expect(vi.mocked(stealthFetch)).toHaveBeenCalledTimes(calls);
+  });
   it('marks slow regions as pending instead of silently treating them as complete', async () => {
     vi.mocked(stealthFetch).mockReturnValue(new Promise(() => {}));
     const pending = GET(new Request('http://localhost/api/cctv?region=uk'));

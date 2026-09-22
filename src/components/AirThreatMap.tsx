@@ -2,6 +2,7 @@
 import { useEffect, type RefObject } from 'react';
 import type { Map, GeoJSONSource, MapLayerMouseEvent } from 'maplibre-gl';
 import { useAirThreat } from './AirThreatProvider';
+import {ensureReportSymbols,reportSymbol} from '@/lib/air-threat/symbols';
 import { filteredFeatures } from '@/lib/air-threat/types';
 export default function AirThreatMap({ mapRef, ready }: {
     mapRef: RefObject<Map | null>;
@@ -25,8 +26,12 @@ export default function AirThreatMap({ mapRef, ready }: {
         if (!m.getLayer('civilian-acoustic'))
             m.addLayer({ id: 'civilian-acoustic', type: 'fill', source: 'civilian-acoustic', paint: { 'fill-color': '#67e8f9', 'fill-opacity': .1, 'fill-outline-color': '#67e8f9' } });
         if (!m.getLayer('civilian-points'))
-            m.addLayer({ id: 'civilian-points', type: 'circle', source: 'civilian-reports', paint: { 'circle-color': ['match', ['get', 'source_class'], 'OFFICIAL', '#fbbf24', 'PUBLIC_REPORT', '#c4b5fd', '#7dd3fc'], 'circle-radius': ['case', ['==', ['get', 'source_class'], 'OFFICIAL'], 9, 5], 'circle-stroke-color': '#fff', 'circle-stroke-width': 1, 'circle-opacity': ['match', ['get', 'age_state'], 'RECENT', 1, 'FRESH', .8, 'AGING', .55, .3] } });
-        const features = open ? filteredFeatures(state, groups) : empty, visible = new Set(features.features.map(f => f.properties?.id));
+            m.addLayer({ id: 'civilian-points', type: 'circle', source: 'civilian-reports', paint: { 'circle-color': ['match', ['get', 'source_class'], 'OFFICIAL', '#fbbf24', 'PUBLIC_REPORT', '#c4b5fd', '#7dd3fc'], 'circle-radius': ['case', ['==', ['get', 'source_class'], 'OFFICIAL'], 14, 12], 'circle-stroke-color': '#fff', 'circle-stroke-width': 1, 'circle-opacity': ['match', ['get', 'age_state'], 'RECENT', 1, 'FRESH', .8, 'AGING', .55, .3] } });
+        ensureReportSymbols(m);
+        const filtered = open ? filteredFeatures(state, groups) : empty;
+        const features:GeoJSON.FeatureCollection={...filtered,features:filtered.features.map(f=>({...f,properties:{...f.properties,icon:`report-${reportSymbol(String(f.properties?.type||''))}`,acoustic:String(f.properties?.type||'').startsWith('HEARD_')}}))}, visible = new Set(features.features.map(f => f.properties?.id));
+        if(!m.getLayer('civilian-report-icons'))m.addLayer({id:'civilian-report-icons',type:'symbol',source:'civilian-reports',layout:{'icon-image':['get','icon'],'icon-size':.65,'icon-allow-overlap':true}});
+        if(!m.getLayer('civilian-sound-report-area'))m.addLayer({id:'civilian-sound-report-area',type:'circle',source:'civilian-reports',filter:['==',['get','acoustic'],true],paint:{'circle-radius':32,'circle-color':'#67e8f9','circle-opacity':.14}},'civilian-points');
         (m.getSource('civilian-reports') as GeoJSONSource).setData(features);
         m.setLayoutProperty('civilian-heat', 'visibility', open && heat ? 'visible' : 'none');
         (m.getSource('civilian-clusters') as GeoJSONSource).setData({ type: 'FeatureCollection', features: open && envelopes ? state?.clusters.filter(c => c.geometry && c.report_ids.every(id => visible.has(id))).map(c => ({ type: 'Feature' as const, properties: { id: c.id }, geometry: c.geometry! })) || [] : [] });
@@ -37,8 +42,9 @@ export default function AirThreatMap({ mapRef, ready }: {
             setAcoustic(null);
         } };
         m.on('click', 'civilian-points', click);
+        m.on('click', 'civilian-report-icons', click);
         m.on('click', 'civilian-envelopes', click);
-        return () => { m.off('click', 'civilian-points', click); m.off('click', 'civilian-envelopes', click); };
+        return () => { m.off('click', 'civilian-points', click); m.off('click','civilian-report-icons',click); m.off('click', 'civilian-envelopes', click); };
     }, [ready, mapRef, open, state, groups, heat, envelopes, acoustic, select, setAcoustic]);
     return null;
 }

@@ -198,3 +198,7 @@ Backend tests создают уникальные временные schemas в 
 - Развёртывание/документация: `docker-compose.yml`, `intel/Dockerfile`, `README.md`, `docs/{Intelligence,Ontology}.md`, `docs/Workflow/{Log,BugLog}.md`.
 
 Ограничения: отслеживание начинается после регистрации объекта; задним числом полный маршрут не восстанавливается. Положительные корреляции появляются только при подходящих реальных данных. Каталог инфраструктуры конечный. AIS требует ключ. Внешние сбои, включая OpenSanctions, видны в Source Health. Iframe video и frozen-frame detection не проверяются. Правила не заменяют официальные предупреждения и не дают прогноза ущерба.
+
+### Раздельное здоровье CCTV (22.09.2026)
+
+`intelligence_sources.camera_media` хранит результат snapshot отдельно от stream. ID-only camera-check подтверждает только полученные image bytes; видео остаётся UNKNOWN и проверяется браузером. Это также относится к HLS-камере с отдельным JPEG. Healthy only использует свежий успешный кадр, не обещает video playback. Подробности, безопасность и реальные проверки: [CctvPlayback.md](CctvPlayback.md).

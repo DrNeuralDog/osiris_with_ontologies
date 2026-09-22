@@ -34,5 +34,24 @@
 - Шаги: `npx eslint` для этих файлов.
 - Фактически: исходно 201 error (76 + 119 + 2 + 4); после текущих изменений 200 (75 + 119 + 2 + 4). Основные правила: no-explicit-any, React refs/purity/set-state-in-effect. Исходные diagnostics воспроизводятся на HEAD; новые standalone modules чистые.
 - Уточнение 2026-09-21, Stage 4: lint всех изменённых legacy-компонентов одним процессом исчерпал стандартные 4 GiB Node heap. Сравнение восьми компонентов отдельно с HEAD: MarketsPanel 3 → 3, ChainBrief 8 → 8, остальные шесть 0 → 0 diagnostics; новой ошибки там нет. Новые Cases/API/i18n и затронутая новая intelligence-логика проходят scoped lint.
+- Уточнение 2026-09-22: CameraViewer выделен в типизированные CameraViewer/CameraMedia/playback modules; scoped lint этого компонента и новой CCTV-логики теперь чистый. Остальной legacy debt не переписывался.
+- Уточнение 2026-09-22, Weather: в исходных props `LayerPanel.tsx` остаются 3 `no-explicit-any` errors (строки 16–18), полный lint файла также показывает 5 unused warnings. Новая weather-логика проходит scoped lint; старую типизацию props не переписывали в погодном исправлении.
 - Ожидается: постепенная типизация/исправление lifecycle и нулевой lint debt.
 - Влияние: полный scoped lint старых файлов красный, npm test/TypeScript/build проверяются отдельно. Отложено: массовый rewrite старых компонентов выходит за согласованный scope; новые lint warnings текущего прохода исправлены.
+
+
+## BUG-006 — часть CCTV embeds/MJPEG недоступна в текущем окружении
+
+- Обнаружение: 2026-09-22, browser smoke production Docker; источник: наблюдение агента.
+- Примеры: YouTube `jp-shibuya-crossing`, `th-bangkok-sukhumvit-soi-11`; IPCamLive `gr-aodos-cam128`; rtsp.me `pubcam-netherlands-nieuwegein-down-under-recreatie`; MJPEG `pl-slupsk-1` и Taiwan freeway camera 212.
+- Воспроизведение: загрузить соответствующий регион каталога, открыть `/camera?id=…`. В проверке не получен playback в течение 15 секунд. Прямое открытие IPCamLive также показало ошибку media. Для Skyline Amakusa внутри Docker отдельно воспроизведён временный DNS `EAI_AGAIN`, тогда как запрос той же публичной страницы с хоста прошёл.
+- Ожидается: воспроизведение, если источник в эфире, доступен из этой сети и разрешает embedding. Корневая причина каждого embed не установлена; это не доказательство физического offline камеры и не новая подтверждённая регрессия.
+- Исправлено в текущем проходе: бесконечный loading, отсутствие snapshot fallback, ложное video-healthy от JPEG, бессрочный отрицательный resolver cache. Три независимых HLS и MP4 действительно воспроизводятся. Ограничения оставшихся providers не обходятся.
+- Влияние/отсрочка: полный smoke успешных iframe/MJPEG не закрыт. Нужны повторная проверка доступности провайдера/embedding из рабочей сети и сверка актуальности catalog URL. Старые Skyline numeric snapshot IDs могут принадлежать другим камерам; теперь непроверенное соответствие блокируется, а не показывается как факт. Таблица реальных результатов: docs/CctvPlayback.md.
+
+## BUG-007 — неполное покрытие гражданских предупреждений и старые GDELT metadata
+
+- Обнаружение: 2026-09-22; пользователь и диагностика агента. Код чтения исправлен: LIVE теперь читает retained PostgreSQL с bbox/time до limit, explicit threat_types участвуют в фильтрах, Live Alerts автоматически проходит conservative civil-warning bridge. Source diagnostics и ошибки доступны в UI/API. Проверены реальные map markers и Evidence; прежние описание диагностики и результаты сохранены в Log.md.
+- Незакрытая часть: в live smoke 108 общих сообщений дали 0 явных warning/auditory формулировок. Доступный набор общих новостных источников не обеспечивает заявленное глобальное/региональное покрытие гражданских предупреждений. War-Tracker после реального server-side запроса без ключа ответил HTTP 402; alerts.in.ua требует токен. Автоматическое заполнение drone/missile layers не подтверждено на живых данных. Fixtures не заменяют этот результат.
+- Старые GDELT records могут содержать generic MILITARY_STRIKE label при CAMEO 190 и неполную metadata географической точности. Они не перезаписаны; новый normalizer использует CONFLICT_EVENT и исключает country-level centroid из новых map records. Reporting time GDELT не доказывает время самого инцидента.
+- Ожидается: проверенное подключение разрешённого источника гражданских предупреждений с доступом и достаточным покрытием; отсутствие вводящих в заблуждение трактовок старых данных. Отложено из-за отсутствия provider access/живых подходящих warning records и необходимости отдельно проверять legacy metadata. Не обходить access restrictions, не подменять отсутствие данных фальшивыми предупреждениями.

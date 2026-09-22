@@ -287,3 +287,9 @@ Stage 3C.1: [Civilian Air Threat — AOI, официальные сообщен�
 ## Investigation Workspace и русский интерфейс
 
 Cases, заметки, сохранённые Object Sets, экспорт и переключение RU/EN: [документация](docs/Investigations.md). После обновления выполните `docker compose up -d --build`; последующие запуски — `docker compose up -d`.
+
+CCTV: bounded playback, snapshot fallback и раздельная диагностика — [docs/CctvPlayback.md](docs/CctvPlayback.md).
+
+- [Гражданские предупреждения: Live Alerts → PostgreSQL → карта, evidence и Replay](docs/MilitaryEventAggregation.md).
+
+Погодные поля Open-Meteo: [настройки, диагностика и ограничения](docs/WeatherIntelligence.md).

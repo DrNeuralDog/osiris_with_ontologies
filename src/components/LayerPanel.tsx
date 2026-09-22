@@ -8,7 +8,7 @@ import {
   CloudLightning, Ship, Network, Database, Ghost,
   Flame, Tv, Radio, Mountain, Anchor, Megaphone, SlidersHorizontal
 } from 'lucide-react';
-import { WORLD_LAYERS, toggleWorldLayer } from '@/lib/world/types';
+import { WORLD_LAYERS, toggleWorldLayer, toggleWorldLayerGroup } from '@/lib/world/types';
 import StyleStudio from './StyleStudio';
 import { TERRAIN_MIN_ZOOM, type TerrainStatus } from '@/lib/map-terrain';
 
@@ -237,11 +237,7 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
   const toggleGroup = (layers: LayerDef[]) => {
     const anyOn = layers.some(l => activeLayers[l.key]);
     if (!anyOn && layers.some(l => l.key === 'terrain_elevation' || l.key === 'terrain_3d')) on3DModeSelected?.();
-    setActiveLayers((prev: any) => {
-      const next = { ...prev };
-      for (const l of layers) next[l.key] = !anyOn;
-      return next;
-    });
+    setActiveLayers((prev: Record<string,boolean>) => toggleWorldLayerGroup(prev,layers.map(l=>l.key)));
   };
 
   /* Drop layers whose backing capability is not configured, then drop any group
@@ -433,7 +429,7 @@ function LayerPanel({ data, activeLayers, setActiveLayers, isMobile, theme = 'co
                     animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
                     exit={{ opacity: 0, x: -4, filter: 'blur(2px)' }}
                     transition={{ duration: 0.18, ease: 'easeOut' }}
-                    className="absolute left-[52px] top-1/2 -translate-y-1/2 min-w-[220px] rounded-xl p-3 z-[100] pointer-events-auto"
+                    className={`absolute left-[52px] ${group.label==='WEATHER+'?'top-0 max-h-[65vh] overflow-y-auto':'top-1/2 -translate-y-1/2'} min-w-[220px] rounded-xl p-3 z-[100] pointer-events-auto`}
                     style={{
                       background: 'rgba(0,0,0,0.6)',
                       backdropFilter: 'blur(40px) saturate(1.5)',

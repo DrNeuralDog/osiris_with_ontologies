@@ -116,3 +116,11 @@ test('canonical merge retains history deduplication and correlation fingerprints
  await engine.persist(evaluate({signals:[signal],assets:[{object_id:merged,kind:'airport',lat:1,lon:1.1,provenance}]},now),now);
  assert.equal((await engine.list({object_id:event})).items.length,1);assert.ok([a,b].includes(merged));
 });
+test('camera snapshot health persists independently and cannot certify video playback',async()=>{
+ const id='camera:media-fixture';await health.register({id,name:'Fixture camera',category:'cctv',scope:'camera',endpoint:'fixture camera ID'});
+ await health.record(id,{ok:true,camera_media:{snapshot_status:'SNAPSHOT_AVAILABLE',stream_status:'UNKNOWN'}});
+ const detail=await health.detail(id);assert.equal(detail.camera_media.snapshot_status,'SNAPSHOT_AVAILABLE');assert.equal(detail.camera_media.stream_status,'UNKNOWN');
+ await store.migrate();assert.equal((await health.detail(id)).camera_media.snapshot_status,'SNAPSHOT_AVAILABLE');
+ await assert.rejects(()=>health.record(id,{ok:true,camera_media:{snapshot_status:'SNAPSHOT_AVAILABLE',stream_status:'STREAM_AVAILABLE'}}),/cannot certify video/);
+ await assert.rejects(()=>health.record(id,{ok:true,camera_media:{snapshot_status:'SNAPSHOT_AVAILABLE',stream_status:'UNKNOWN',secret:'not allowed'}}),/Invalid camera media/);
+});

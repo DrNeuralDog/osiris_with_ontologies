@@ -12,6 +12,8 @@ function intelligenceRoutes(store){
  const summary=new IntelligenceSummary(store);
  const timeline=new TimelineService(store);
  const air=new (require('./air-service').AirThreatService)(store);
+ const reports=new (require('./reports').RetainedReports)(store);
+ router.get('/reports',async(req,res)=>res.json(await reports.list(req.query)));
  router.get('/air-threat/state',async(req,res)=>res.json(await air.state(req.query)));
  router.get('/air-threat/areas',async(req,res)=>{M.check(Object.keys(req.query).length===0,'Areas takes no query');res.json(await air.areas());});
  for(const action of ['state','events','coverage','chunk'])router.get(`/timeline/${action}`,async(req,res)=>res.json(await timeline[action](req.query)));

@@ -53,6 +53,7 @@ async function objectContext(store,id){
  return {object,...counts};
 }
 async function investigate(store,input){
+ if(input?.type==='existing')return objectContext(store,input.id);
  const parsed=investigationInput(input);
  const id=await store.transaction(async db=>{
   if(input.type==='world')return require('./world').saveWorld(store,db,parsed);
