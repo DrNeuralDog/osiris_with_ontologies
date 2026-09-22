@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -81,6 +82,7 @@ function buildEmbedSrc(videoId: string, big: boolean): string {
 }
 
 export default function SpaceCam() {
+  const {t:uiText}=useUILocale();
   const [active, setActive] = useState(FEEDS[0]);
   const [expanded, setExpanded] = useState(false);
 
@@ -96,16 +98,14 @@ export default function SpaceCam() {
     <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-panel)] backdrop-blur-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border-secondary)]/40">
         <Radio className="w-3.5 h-3.5 text-[#00E5FF]" />
-        <span className="text-[11px] font-mono font-bold tracking-widest text-[#00E5FF]">
-          LIVE FROM SPACE
-        </span>
+        <span className="text-[11px] font-mono font-bold tracking-widest text-[#00E5FF]">{uiText("LIVE FROM SPACE")}{" "}</span>
         <span className="ml-auto flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-[#FF3D3D] animate-pulse" />
           <span className="text-[9px] font-mono tracking-wider text-[var(--text-muted)]">24/7</span>
         </span>
         <button
           onClick={() => setExpanded(true)}
-          title="Expand — a bigger player is what makes YouTube serve HD"
+          title={uiText("Expand — a bigger player is what makes YouTube serve HD")}
           className="ml-1 p-1 rounded hover:bg-[var(--hover-accent)] text-[var(--text-muted)] hover:text-[#00E5FF] transition-colors"
         >
           <Maximize2 className="w-3 h-3" />
@@ -126,9 +126,7 @@ export default function SpaceCam() {
         <button
           onClick={() => setExpanded(true)}
           className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-mono tracking-wider text-[#00E5FF] opacity-0 group-hover/player:opacity-100 transition-opacity"
-        >
-          EXPAND FOR HD ↗
-        </button>
+        >{uiText("EXPAND FOR HD ↗")}{" "}</button>
       </div>
 
       {FEEDS.length > 1 && (
@@ -143,7 +141,7 @@ export default function SpaceCam() {
                   : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--hover-accent)]'
               }`}
             >
-              {f.label}
+              {uiText(String(f.label))}
             </button>
           ))}
         </div>
@@ -152,17 +150,14 @@ export default function SpaceCam() {
       <div className="px-3 py-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[10px] font-mono text-[var(--text-secondary)] truncate">{active.detail}</div>
-          <div className="text-[9px] font-mono text-[var(--text-muted)]">
-            ALT ~{ORBIT_ALT_KM} KM · ORBIT ~93 MIN
-          </div>
+          <div className="text-[9px] font-mono text-[var(--text-muted)]">{uiText("ALT ~")}{ORBIT_ALT_KM}{" "}{uiText("KM · ORBIT ~93 MIN")}{" "}</div>
         </div>
         <a
           href={`https://www.youtube.com/watch?v=${active.videoId}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--border-secondary)]/40 text-[9px] font-mono text-[var(--text-muted)] hover:text-[#00E5FF] hover:border-[#00E5FF]/40 transition-colors flex-shrink-0"
-        >
-          SOURCE <ExternalLink className="w-2.5 h-2.5" />
+        >{uiText("SOURCE")}{" "}<ExternalLink className="w-2.5 h-2.5" />
         </a>
       </div>
 
@@ -177,9 +172,7 @@ export default function SpaceCam() {
           >
             <div className="flex items-center gap-2 mb-2">
               <Radio className="w-4 h-4 text-[#00E5FF]" />
-              <span className="text-[11px] font-mono font-bold tracking-widest text-[#00E5FF]">
-                LIVE FROM SPACE
-              </span>
+              <span className="text-[11px] font-mono font-bold tracking-widest text-[#00E5FF]">{uiText("LIVE FROM SPACE")}{" "}</span>
               <span className="text-[11px] font-mono text-[var(--text-muted)]">· {active.detail}</span>
               <span className="ml-auto flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#FF3D3D] animate-pulse" />
@@ -187,7 +180,7 @@ export default function SpaceCam() {
               </span>
               <button
                 onClick={() => setExpanded(false)}
-                title="Close (Esc)"
+                title={uiText("Close (Esc)")}
                 className="p-1.5 rounded hover:bg-white/10 text-[var(--text-muted)] hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -222,12 +215,10 @@ export default function SpaceCam() {
                       : 'border-white/10 text-[var(--text-muted)] hover:bg-white/10'
                   }`}
                 >
-                  {f.label}
+                  {uiText(String(f.label))}
                 </button>
               ))}
-              <span className="ml-auto text-[10px] font-mono text-[var(--text-muted)]">
-                ALT ~{ORBIT_ALT_KM} KM · ORBIT ~93 MIN · ESC TO CLOSE
-              </span>
+              <span className="ml-auto text-[10px] font-mono text-[var(--text-muted)]">{uiText("ALT ~")}{ORBIT_ALT_KM}{" "}{uiText("KM · ORBIT ~93 MIN · ESC TO CLOSE")}{" "}</span>
             </div>
           </div>
         </div>,

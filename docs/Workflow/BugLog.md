@@ -33,5 +33,6 @@
 - Источник: наблюдение агента; сравнение с исходным HEAD до Intelligence Center.
 - Шаги: `npx eslint` для этих файлов.
 - Фактически: исходно 201 error (76 + 119 + 2 + 4); после текущих изменений 200 (75 + 119 + 2 + 4). Основные правила: no-explicit-any, React refs/purity/set-state-in-effect. Исходные diagnostics воспроизводятся на HEAD; новые standalone modules чистые.
+- Уточнение 2026-09-21, Stage 4: lint всех изменённых legacy-компонентов одним процессом исчерпал стандартные 4 GiB Node heap. Сравнение восьми компонентов отдельно с HEAD: MarketsPanel 3 → 3, ChainBrief 8 → 8, остальные шесть 0 → 0 diagnostics; новой ошибки там нет. Новые Cases/API/i18n и затронутая новая intelligence-логика проходят scoped lint.
 - Ожидается: постепенная типизация/исправление lifecycle и нулевой lint debt.
 - Влияние: полный scoped lint старых файлов красный, npm test/TypeScript/build проверяются отдельно. Отложено: массовый rewrite старых компонентов выходит за согласованный scope; новые lint warnings текущего прохода исправлены.

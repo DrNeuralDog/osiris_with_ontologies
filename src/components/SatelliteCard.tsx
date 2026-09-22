@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { ExternalLink, Orbit, Satellite, X } from 'lucide-react';
 import InvestigationActions from './InvestigationActions';
@@ -71,9 +72,10 @@ function colorSafe(value: string | undefined): string {
 }
 
 function Field({ label, value, color }: { label: string; value: string; color?: string }) {
+  const {t:uiText}=useUILocale();
   return (
     <div className="min-w-0">
-      <div className="text-[8px] font-mono tracking-[0.15em] text-[var(--text-muted)]">{label}</div>
+      <div className="text-[8px] font-mono tracking-[0.15em] text-[var(--text-muted)]">{uiText(String(label))}</div>
       <div
         className="truncate text-[11px] font-mono tabular-nums text-[var(--text-primary)]"
         style={color ? { color } : undefined}
@@ -86,6 +88,7 @@ function Field({ label, value, color }: { label: string; value: string; color?: 
 }
 
 export default function SatelliteCard({ sat, onClose, onInvestigate }: { sat: SatelliteDetail; onClose: () => void; onInvestigate?: (seed: InvestigationSeed, intent: InvestigationIntent) => void }) {
+  const {t:uiText}=useUILocale();
   const accent = colorSafe(sat.color);
   const shell = regime(sat.alt);
 
@@ -112,8 +115,8 @@ export default function SatelliteCard({ sat, onClose, onInvestigate }: { sat: Sa
         <button
           onClick={onClose}
           className="-mr-1 -mt-1 flex-shrink-0 rounded-md p-1 text-[var(--text-muted)] transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
-          aria-label="Clear satellite selection"
-          title="Clear selection (Esc)"
+          aria-label={uiText("Clear satellite selection")}
+          title={uiText("Clear selection (Esc)")}
         >
           <X className="h-3 w-3" />
         </button>
@@ -140,9 +143,9 @@ export default function SatelliteCard({ sat, onClose, onInvestigate }: { sat: Sa
           rather than as the selection having silently failed. */}
       <div className="flex items-center gap-1.5 border-t border-[var(--border-secondary)] px-2.5 py-1.5 text-[8px] font-mono tracking-[0.12em] text-[var(--text-muted)]">
         <Orbit className="h-2.5 w-2.5" />
-        {sat.track === 'loading' && <span>PLOTTING ORBIT…</span>}
-        {sat.track === 'ready' && <span style={{ color: accent }}>ORBIT TRACK ON GLOBE</span>}
-        {sat.track === 'unavailable' && <span>NO TRACK — TLE UNAVAILABLE</span>}
+        {sat.track === 'loading' && <span>{uiText("PLOTTING ORBIT…")}</span>}
+        {sat.track === 'ready' && <span style={{ color: accent }}>{uiText("ORBIT TRACK ON GLOBE")}</span>}
+        {sat.track === 'unavailable' && <span>{uiText("NO TRACK — TLE UNAVAILABLE")}</span>}
       </div>
 
       {onInvestigate && <div className="px-2.5 pb-2"><InvestigationActions entity={{ ...sat, type: 'satellite' }} onInvestigate={onInvestigate} /></div>}
@@ -154,8 +157,7 @@ export default function SatelliteCard({ sat, onClose, onInvestigate }: { sat: Sa
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-1.5 border-t px-2.5 py-2 text-[9px] font-mono tracking-[0.15em] transition-colors"
           style={{ borderColor: 'var(--border-secondary)', color: accent, background: `${accent}0a` }}
-        >
-          TRACK ON N2YO <ExternalLink className="h-2.5 w-2.5" />
+        >{uiText("TRACK ON N2YO")}{" "}<ExternalLink className="h-2.5 w-2.5" />
         </a>
       )}
     </div>

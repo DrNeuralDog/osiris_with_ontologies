@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,6 +96,7 @@ export default function ArcGISPanel({
   importedLayers,
   mapBounds,
 }: ArcGISPanelProps) {
+  const {t:uiText}=useUILocale();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ArcGISResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -194,17 +196,13 @@ export default function ArcGISPanel({
       <div className="flex items-center justify-between bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-lg p-2.5">
         <div className="flex items-center gap-2">
           <Database className="w-4 h-4 text-[#D4AF37]" />
-          <span className="text-[11px] font-mono font-bold tracking-[0.2em] text-[#D4AF37] uppercase">
-            ArcGIS Intel
-          </span>
+          <span className="text-[11px] font-mono font-bold tracking-[0.2em] text-[#D4AF37] uppercase">{uiText("ArcGIS Intel")}{" "}</span>
         </div>
         <div className="text-right">
           <div className="text-[10px] font-mono text-[#D4AF37]/80 uppercase tracking-widest">
-            {importedLayers.length} Layers Active
-          </div>
+            {importedLayers.length}{" "}{uiText("Layers Active")}{" "}</div>
           <div className="text-[10px] font-mono font-bold text-[#D4AF37] tabular-nums">
-            {totalFeatures.toLocaleString()} Features
-          </div>
+            {totalFeatures.toLocaleString()}{" "}{uiText("Features")}{" "}</div>
         </div>
       </div>
 
@@ -212,11 +210,9 @@ export default function ArcGISPanel({
       {mapBounds && (
         <div className="flex items-center gap-2 px-2 py-1 rounded border border-white/[0.04] bg-white/[0.02]">
           <Globe className="w-3 h-3 text-[var(--text-muted)]" />
-          <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider flex-1">
-            Map Extent:
-          </span>
+          <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider flex-1">{uiText("Map Extent:")}{" "}</span>
           <span className="text-[9px] font-mono text-[var(--text-muted)] tabular-nums truncate max-w-[150px]">
-            {mapBounds.west.toFixed(2)}, {mapBounds.south.toFixed(2)} to {mapBounds.east.toFixed(2)}, {mapBounds.north.toFixed(2)}
+            {mapBounds.west.toFixed(2)}, {mapBounds.south.toFixed(2)}{" "}{uiText("to")}{" "}{mapBounds.east.toFixed(2)}, {mapBounds.north.toFixed(2)}
           </span>
         </div>
       )}
@@ -224,9 +220,7 @@ export default function ArcGISPanel({
       {/* ── Active Imported Layers (TOP) ─────────────────────────── */}
       {importedLayers.length > 0 && (
         <div className="flex flex-col gap-1.5 shrink-0">
-          <span className="text-[9px] font-mono tracking-[0.2em] uppercase text-[var(--text-muted)] px-1">
-            Active Data Layers
-          </span>
+          <span className="text-[9px] font-mono tracking-[0.2em] uppercase text-[var(--text-muted)] px-1">{uiText("Active Data Layers")}{" "}</span>
           <div className="flex flex-col gap-1 max-h-[220px] overflow-y-auto styled-scrollbar">
             <AnimatePresence>
               {importedLayers.map((layer) => {
@@ -284,7 +278,7 @@ export default function ArcGISPanel({
                       <button
                         onClick={() => setExpandedLayerId(isExpanded ? null : layer.id)}
                         className="flex-shrink-0 p-0.5 rounded hover:bg-white/10 transition-colors text-white/40 hover:text-white/70"
-                        title="Layer settings"
+                        title={uiText("Layer settings")}
                       >
                         <SlidersHorizontal className="w-3 h-3" />
                       </button>
@@ -301,7 +295,7 @@ export default function ArcGISPanel({
                           if (isExpanded) setExpandedLayerId(null);
                         }}
                         className="flex-shrink-0 p-0.5 rounded text-red-400/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                        title="Remove Layer"
+                        title={uiText("Remove Layer")}
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -321,8 +315,7 @@ export default function ArcGISPanel({
                             {/* Color Swatches */}
                             <div className="flex flex-col gap-1">
                               <span className="text-[9px] font-mono tracking-[0.2em] uppercase text-[var(--text-muted)] flex items-center gap-1">
-                                <Palette className="w-2.5 h-2.5" /> Color
-                              </span>
+                                <Palette className="w-2.5 h-2.5" />{" "}{uiText("Color")}{" "}</span>
                               <div className="flex flex-wrap gap-1.5">
                                 {LAYER_COLORS.map((c) => (
                                   <button
@@ -346,8 +339,7 @@ export default function ArcGISPanel({
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center justify-between">
                                 <span className="text-[9px] font-mono tracking-[0.2em] uppercase text-[var(--text-muted)] flex items-center gap-1">
-                                  <Eye className="w-2.5 h-2.5" /> Opacity
-                                </span>
+                                  <Eye className="w-2.5 h-2.5" />{" "}{uiText("Opacity")}{" "}</span>
                                 <span className="text-[10px] font-mono font-bold tabular-nums" style={{ color: layer.color }}>
                                   {Math.round(layer.opacity * 100)}%
                                 </span>
@@ -388,7 +380,7 @@ export default function ArcGISPanel({
             setActiveCategory(null);
           }}
           onKeyDown={(e) => e.key === 'Enter' && runSearch(query)}
-          placeholder="Search ArcGIS layers..."
+          placeholder={uiText("Search ArcGIS layers...")}
           className="w-full bg-black/60 border border-white/10 rounded-lg pl-8 pr-16 py-2.5 text-[10px] font-mono text-white placeholder:text-[var(--text-muted)]/40 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
         />
         <button
@@ -396,7 +388,7 @@ export default function ArcGISPanel({
           disabled={searching || !query.trim()}
           className="absolute right-1 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md text-[10px] font-mono font-bold tracking-widest uppercase disabled:opacity-30 transition-all bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/20"
         >
-          {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'SCAN'}
+          {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : uiText("SCAN")}
         </button>
       </div>
 
@@ -412,7 +404,7 @@ export default function ArcGISPanel({
                 : 'bg-white/[0.03] border-white/[0.08] text-[var(--text-muted)] hover:bg-white/[0.06] hover:border-white/20'
             }`}
           >
-            {cat.label}
+            {uiText(String(cat.label))}
           </button>
         ))}
       </div>
@@ -451,7 +443,7 @@ export default function ArcGISPanel({
         {!searching && results.length > 0 && (
           <div className="flex items-baseline gap-2 px-1 pb-0.5">
             <span className="text-[10px] font-mono text-white tabular-nums">
-              {results.length} layer{results.length === 1 ? '' : 's'}
+              {results.length}{" "}{uiText("layer")}{results.length === 1 ? '' : 's'}
             </span>
             {resultsFor && (
               <span className="text-[9px] font-mono text-[var(--text-muted)] truncate">
@@ -460,8 +452,7 @@ export default function ArcGISPanel({
             )}
             {results.filter(r => importedIds.includes(r.id)).length > 0 && (
               <span className="ml-auto text-[9px] font-mono text-[var(--alert-green)] tabular-nums flex-shrink-0">
-                {results.filter(r => importedIds.includes(r.id)).length} live
-              </span>
+                {results.filter(r => importedIds.includes(r.id)).length}{" "}{uiText("live")}{" "}</span>
             )}
           </div>
         )}
@@ -523,9 +514,7 @@ export default function ArcGISPanel({
                           borderColor: `${importedLayer?.color || 'var(--alert-green)'}40`,
                         }}
                       >
-                        <CheckCircle className="w-3 h-3" />
-                        LIVE
-                      </span>
+                        <CheckCircle className="w-3 h-3" />{uiText("LIVE")}{" "}</span>
                     ) : (
                       <button
                         onClick={() => handleImport(result)}
@@ -534,14 +523,10 @@ export default function ArcGISPanel({
                       >
                         {isImporting ? (
                           <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            LOADING...
-                          </>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />{uiText("LOADING...")}{" "}</>
                         ) : (
                           <>
-                            <Download className="w-3 h-3" />
-                            IMPORT
-                          </>
+                            <Download className="w-3 h-3" />{uiText("IMPORT")}{" "}</>
                         )}
                       </button>
                     )}
@@ -567,8 +552,7 @@ export default function ArcGISPanel({
                       ))}
                       {result.tags.length > 4 && (
                         <span className="text-[9px] font-mono text-[var(--text-muted)]/50 flex items-center px-1">
-                          +{result.tags.length - 4} more
-                        </span>
+                          +{result.tags.length - 4}{" "}{uiText("more")}{" "}</span>
                       )}
                     </div>
                   )}
@@ -585,12 +569,8 @@ export default function ArcGISPanel({
               <Search className="w-4 h-4 text-[#D4AF37] absolute -bottom-1 -right-1" />
             </div>
             <div className="flex flex-col items-center gap-1.5 text-center">
-              <span className="text-[10px] font-mono font-bold text-white tracking-wide">
-                No active search
-              </span>
-              <span className="text-[10px] font-mono text-[var(--text-muted)] max-w-[200px] leading-relaxed">
-                Try searching for Power Plants, Substations, Evacuation Routes, or Pipelines in the designated area.
-              </span>
+              <span className="text-[10px] font-mono font-bold text-white tracking-wide">{uiText("No active search")}{" "}</span>
+              <span className="text-[10px] font-mono text-[var(--text-muted)] max-w-[200px] leading-relaxed">{uiText("Try searching for Power Plants, Substations, Evacuation Routes, or Pipelines in the designated area.")}{" "}</span>
             </div>
           </div>
         )}
@@ -600,14 +580,10 @@ export default function ArcGISPanel({
       <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] shrink-0">
         <div className="flex items-center gap-1.5">
           <Radio className="w-3 h-3 text-[#D4AF37]" />
-          <span className="text-[9px] font-mono tracking-[0.2em] uppercase text-[#D4AF37]/80">
-            ArcGIS PUBLIC
-          </span>
+          <span className="text-[9px] font-mono tracking-[0.2em] uppercase text-[#D4AF37]/80">{uiText("ArcGIS PUBLIC")}{" "}</span>
         </div>
         <div className="flex items-center gap-2.5">
-          <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">
-            Connection Health
-          </span>
+          <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-wider">{uiText("Connection Health")}{" "}</span>
           <div className="relative flex items-center justify-center">
             <Wifi className={`w-3 h-3 ${searching ? 'text-[#D4AF37]' : 'text-[var(--alert-green)]'}`} />
             <span

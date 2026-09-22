@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { layoutTile, tileHeight, tilesOverlap, type TileGeometry } from '@/lib/map-tile-layout';
@@ -152,6 +153,7 @@ function Tile({ feed, onOpen, onFail }: {
   onOpen: (feed: PreviewFeed) => void;
   onFail: (id: string) => void;
 }) {
+ const {t:uiText}=useUILocale();
   const fail = useCallback(() => onFail(feed.id), [onFail, feed.id]);
   const { ref, handshake } = useYouTubeError(feed.id, fail);
 
@@ -180,9 +182,7 @@ function Tile({ feed, onOpen, onFail }: {
           aria-label={`Open ${feed.name}`}
           className="absolute right-1 top-1 z-10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.12em]"
           style={{ background: 'rgba(0,0,0,0.75)', border: `1px solid ${news(50)}`, color: NEWS }}
-        >
-          Open
-        </button>
+        >{uiText("Open")}{" "}</button>
       </div>
 
       <div

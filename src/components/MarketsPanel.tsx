@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -125,6 +126,7 @@ function useFeedAge(timestamp?: string): string | null {
 }
 
 export default function MarketsPanel({ data, spaceWeather }: MarketsPanelProps) {
+  const {t:uiText}=useUILocale();
   const [expanded, setExpanded] = useState(true);
   const [maximized, setMaximized] = useState(false);
   const [activeSection, setActiveSection] = useState('stocks');
@@ -182,12 +184,12 @@ export default function MarketsPanel({ data, spaceWeather }: MarketsPanelProps) 
   const breadthBlock = breadth && (
     <div className="px-2 py-1.5 rounded-lg border border-[var(--border-primary)] bg-white/[0.02]">
       <div className="flex items-center justify-between">
-        <span className="text-[9px] font-mono tracking-widest text-[var(--text-muted)]">BREADTH</span>
+        <span className="text-[9px] font-mono tracking-widest text-[var(--text-muted)]">{uiText("BREADTH")}</span>
         <span className="text-[10px] font-mono tabular-nums">
           <span style={{ color: GREEN }}>{breadth.up}▲</span>
           <span className="text-[var(--text-muted)]"> / </span>
           <span style={{ color: RED }}>{breadth.down}▼</span>
-          <span className="text-[var(--text-muted)]"> of {breadth.total}</span>
+          <span className="text-[var(--text-muted)]">{" "}{uiText("of")}{" "}{breadth.total}</span>
         </span>
       </div>
       <div className="mt-1.5 h-1 rounded-full overflow-hidden bg-[var(--alert-red)]/30">
@@ -205,15 +207,14 @@ export default function MarketsPanel({ data, spaceWeather }: MarketsPanelProps) 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Zap className="w-3 h-3" style={{ color: spaceWeather.storm_color }} />
-          <span className="text-[11px] font-mono tracking-widest text-[var(--text-muted)]">SPACE WEATHER</span>
+          <span className="text-[11px] font-mono tracking-widest text-[var(--text-muted)]">{uiText("SPACE WEATHER")}</span>
         </div>
         <span className="text-[11px] font-mono font-bold" style={{ color: spaceWeather.storm_color }}>
           {spaceWeather.kp_index == null ? 'No reading' : `Kp ${spaceWeather.kp_index} — ${spaceWeather.storm_level}`}
         </span>
       </div>
       {spaceWeather.solar_flares?.length > 0 && (
-        <div className="mt-1 text-[9px] font-mono text-[var(--text-muted)]">
-          Latest flare: {spaceWeather.solar_flares[0].class}
+        <div className="mt-1 text-[9px] font-mono text-[var(--text-muted)]">{uiText("Latest flare:")}{" "}{spaceWeather.solar_flares[0].class}
         </div>
       )}
     </div>
@@ -249,7 +250,7 @@ export default function MarketsPanel({ data, spaceWeather }: MarketsPanelProps) 
           <button key={s.key} onClick={() => setActiveSection(s.key)}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[10px] font-mono tracking-wider whitespace-nowrap transition-all ${activeSection === s.key ? 'bg-[var(--hover-accent)] text-[var(--gold-primary)] border border-[var(--border-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] border border-transparent'}`}>
             <Icon className="w-3 h-3" />
-            {s.label}
+            {uiText(String(s.label))}
             {count > 0 && <span className="text-[var(--text-muted)]">{count}</span>}
           </button>
         );
@@ -291,10 +292,9 @@ export default function MarketsPanel({ data, spaceWeather }: MarketsPanelProps) 
         feedLoaded ? (
           <div className="flex items-center justify-center gap-1.5 py-3 text-[10px] font-mono text-[var(--text-muted)]">
             <AlertTriangle className="w-3 h-3" />
-            {activeSection.toUpperCase()} FEED UNAVAILABLE — RETRYING
-          </div>
+            {activeSection.toUpperCase()}{" "}{uiText("FEED UNAVAILABLE — RETRYING")}{" "}</div>
         ) : (
-          <div className="text-center py-3 text-[11px] font-mono text-[var(--text-muted)]">Loading {activeSection}...</div>
+          <div className="text-center py-3 text-[11px] font-mono text-[var(--text-muted)]">{uiText("Loading")}{" "}{activeSection}...</div>
         )
       )}
     </>
@@ -323,8 +323,8 @@ export default function MarketsPanel({ data, spaceWeather }: MarketsPanelProps) 
             style={{ background: 'var(--gold-primary)', boxShadow: '0 0 8px rgba(var(--gold-rgb),0.6)' }}
           />
           <BarChart3 className="w-3.5 h-3.5 text-[var(--gold-primary)]" />
-          <span className="instrument-title">Markets &amp; Intel</span>
-          <span className="instrument-chip" style={{ color: 'var(--alert-green)' }}>Live</span>
+          <span className="instrument-title">{uiText("Markets & Intel")}</span>
+          <span className="instrument-chip" style={{ color: 'var(--alert-green)' }}>{uiText("Live")}</span>
         </button>
         <div className="flex items-center gap-2">
           {age && <span className="text-[9px] font-mono text-[var(--text-muted)]">{age}</span>}

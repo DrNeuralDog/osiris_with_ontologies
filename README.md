@@ -283,3 +283,7 @@ If you want to help keep the servers alive, and support us to get access to bett
 Stage 3: [World Data Expansion — источники, API, ограничения](docs/WorldDataExpansion.md).
 
 Stage 3C.1: [Civilian Air Threat — AOI, официальные сообщения, кластеры, акустика и Replay](docs/CivilianAirThreat.md).
+
+## Investigation Workspace и русский интерфейс
+
+Cases, заметки, сохранённые Object Sets, экспорт и переключение RU/EN: [документация](docs/Investigations.md). После обновления выполните `docker compose up -d --build`; последующие запуски — `docker compose up -d`.

@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -52,6 +53,7 @@ function formatVolume(v: number): string {
 }
 
 export default function MarketChart({ symbol, name, onClose, large = false }: MarketChartProps) {
+ const {t:uiText}=useUILocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -185,11 +187,11 @@ export default function MarketChart({ symbol, name, onClose, large = false }: Ma
           </div>
           {rangeChange !== null && (
             <div className="text-[10px] font-mono tabular-nums" style={{ color: rangeChange >= 0 ? UP : DOWN }}>
-              {rangeChange >= 0 ? '+' : ''}{rangeChange.toFixed(2)}% over {range}
+              {rangeChange >= 0 ? '+' : ''}{rangeChange.toFixed(2)}{uiText("% over")}{" "}{range}
             </div>
           )}
         </div>
-        <button onClick={onClose} className="text-[var(--text-muted)] hover:text-white transition-colors shrink-0" title="Close chart">
+        <button onClick={onClose} className="text-[var(--text-muted)] hover:text-white transition-colors shrink-0" title={uiText("Close chart")}>
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -215,8 +217,8 @@ export default function MarketChart({ symbol, name, onClose, large = false }: Ma
         {status !== 'ready' && (
           <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/40 text-[10px] font-mono text-[var(--text-muted)]">
             {status === 'loading'
-              ? <><Loader2 className="w-3 h-3 animate-spin" /> LOADING {range}</>
-              : <><AlertTriangle className="w-3 h-3" /> NO {range} DATA FOR {symbol}</>}
+              ? <><Loader2 className="w-3 h-3 animate-spin" />{" "}{uiText("LOADING")}{" "}{range}</>
+              : <><AlertTriangle className="w-3 h-3" />{" "}{uiText("NO")}{" "}{range}{" "}{uiText("DATA FOR")}{" "}{symbol}</>}
           </div>
         )}
       </div>

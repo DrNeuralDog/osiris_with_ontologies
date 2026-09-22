@@ -1,9 +1,11 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { type ForceGraphMethods, type NodeObject } from 'react-force-graph-2d';
 import { X, Crosshair, RotateCcw, Search, Network, LoaderCircle } from 'lucide-react';
 import EvidenceView from './EvidenceView';
+import AddToCaseButton from './AddToCaseButton';
 import ObjectHistory from './ObjectHistory';
 import { useWorldReplay } from './WorldReplayProvider';
 import { investigationView, type InvestigationIntent, type InvestigationContext } from '@/lib/investigation';
@@ -16,11 +18,12 @@ const buttonClass = 'px-2 py-1.5 rounded border border-[var(--border-primary)] h
 const empty: OntologyGraph = { root_id: '', nodes: [], links: [], truncated: false };
 const tooltip = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-export default function EntityGraphPanel({ seed, objectId, intent='graph', onContext, onMap, onClose }: { seed?: InvestigationSeed; objectId?: string; intent?: InvestigationIntent; onContext?: (context: InvestigationContext) => void; onMap?: (focus: InvestigationMapFocus) => void; onClose: () => void }) {
+export default function EntityGraphPanel({ initialGraph, seed, objectId, intent='graph', onContext, onMap, onClose }: { initialGraph?: OntologyGraph; seed?: InvestigationSeed; objectId?: string; intent?: InvestigationIntent; onContext?: (context: InvestigationContext) => void; onMap?: (focus: InvestigationMapFocus) => void; onClose: () => void }) {
+  const {t:uiText}=useUILocale();
   const replay=useWorldReplay();
   const [detailTab, setDetailTab] = useState<'details' | 'history'>(investigationView(intent).tab);
-  const [graph, setGraph] = useState<OntologyGraph>(empty);
-  const [selected, setSelected] = useState<string>('');
+  const [graph, setGraph] = useState<OntologyGraph>(initialGraph||empty);
+  const [selected, setSelected] = useState<string>(initialGraph?.root_id||'');
   const [selectedLink, setSelectedLink] = useState<OntologyLink | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [query, setQuery] = useState(''), [type, setType] = useState(seed?.type || 'company');
@@ -103,25 +106,25 @@ export default function EntityGraphPanel({ seed, objectId, intent='graph', onCon
     } catch (e) { if (!signal.aborted && generation.current === version) setError(e instanceof Error ? e.message : 'Search failed'); }
     finally { if (generation.current === version) { setBusy(false); lock.current = false; } }
   };
-  return <section role="dialog" aria-modal="true" aria-label="Ontology graph explorer" className="fixed inset-2 md:inset-6 z-[1200] flex flex-col rounded-lg border border-[var(--gold-primary)]/50 bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-2xl font-mono overflow-hidden">
+  return <section role="dialog" aria-modal="true" aria-label={uiText("Ontology graph explorer")} className="fixed inset-2 md:inset-6 z-[1200] flex flex-col rounded-lg border border-[var(--gold-primary)]/50 bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-2xl font-mono overflow-hidden">
     <header className="flex flex-wrap items-center gap-2 border-b border-[var(--border-primary)] px-4 py-3">
-      <Network size={17} className="text-[var(--gold-primary)]" /><div className="mr-auto min-w-0"><h2 className="text-sm tracking-widest">OBJECT EXPLORER</h2><p className="text-xs text-[var(--gold-primary)] truncate">{graph.nodes.find(n=>n.id===graph.root_id)?.canonical_name || seed?.name || 'Saved ontology'}{selectedObject&&selectedObject.id!==graph.root_id?` → ${selectedObject.canonical_name}`:''}</p></div>
-      <button className={buttonClass} onClick={focus} disabled={!graph.root_id} title="Refocus root"><Crosshair size={16} /></button>
-      <button className={buttonClass} onClick={reset} disabled={busy || !graph.root_id} title="Reset to root"><RotateCcw size={16} /></button>
-      <button ref={closeButton} className={buttonClass} onClick={onClose} aria-label="Back to map / Close graph">Back to map <X className="inline" size={14} /></button>
+      <Network size={17} className="text-[var(--gold-primary)]" /><div className="mr-auto min-w-0"><h2 className="text-sm tracking-widest">{uiText("OBJECT EXPLORER")}</h2><p className="text-xs text-[var(--gold-primary)] truncate">{graph.nodes.find(n=>n.id===graph.root_id)?.canonical_name || seed?.name || 'Saved ontology'}{selectedObject&&selectedObject.id!==graph.root_id?` → ${selectedObject.canonical_name}`:''}</p></div>
+      <button className={buttonClass} onClick={focus} disabled={!graph.root_id} title={uiText("Refocus root")}><Crosshair size={16} /></button>
+      <button className={buttonClass} onClick={reset} disabled={busy || !graph.root_id} title={uiText("Reset to root")}><RotateCcw size={16} /></button>
+      <button ref={closeButton} className={buttonClass} onClick={onClose} aria-label={uiText("Back to map / Close graph")}>{uiText("Back to map")}{" "}<X className="inline" size={14} /></button>
     </header>
-    {replay.state.mode==='replay'&&<p className="px-3 py-1 text-xs text-cyan-300">REPLAY: history/evidence refers to retained observations. Graph relationships and object properties show the current ontology.</p>}
+    {replay.state.mode==='replay'&&<p className="px-3 py-1 text-xs text-cyan-300">{uiText("REPLAY: history/evidence refers to retained observations. Graph relationships and object properties show the current ontology.")}</p>}
     <form onSubmit={e => { e.preventDefault(); void search(); }} className="flex flex-wrap gap-2 p-3 border-b border-[var(--border-primary)]">
-      <select aria-label="Object type" value={type} onChange={e => setType(e.target.value)} className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs p-2">{['company', 'person', 'country', 'aircraft', 'vessel', 'ip', 'organization', 'location', 'event', 'infrastructure', 'airport', 'port', 'satellite', 'camera'].map(t => <option key={t}>{t}</option>)}</select>
-      <input aria-label="Object name or identifier" value={query} onChange={e => setQuery(e.target.value)} placeholder="Name, Wikidata QID, ICAO24, MMSI or IP…" className="flex-1 min-w-36 bg-transparent border border-[var(--border-primary)] rounded px-2 text-xs" />
-      <button disabled={busy || !query.trim()} className={buttonClass} title="Search saved objects"><Search size={15} /></button>
-      <button type="button" disabled={busy || !query.trim()} className={buttonClass} onClick={() => void run(signal => ontologyRequest('resolve', { type, id: query.trim() }, signal), true)}>Resolve source</button>
+      <select aria-label={uiText("Object type")} value={type} onChange={e => setType(e.target.value)} className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded text-xs p-2">{['company', 'person', 'country', 'aircraft', 'vessel', 'ip', 'organization', 'location', 'event', 'infrastructure', 'airport', 'port', 'satellite', 'camera'].map(t => <option key={t} value={t}>{uiText(t)}</option>)}</select>
+      <input aria-label={uiText("Object name or identifier")} value={query} onChange={e => setQuery(e.target.value)} placeholder={uiText("Name, Wikidata QID, ICAO24, MMSI or IP…")} className="flex-1 min-w-36 bg-transparent border border-[var(--border-primary)] rounded px-2 text-xs" />
+      <button disabled={busy || !query.trim()} className={buttonClass} title={uiText("Search saved objects")}><Search size={15} /></button>
+      <button type="button" disabled={busy || !query.trim()} className={buttonClass} onClick={() => void run(signal => ontologyRequest('resolve', { type, id: query.trim() }, signal), true)}>{uiText("Resolve source")}</button>
     </form>
-    {results.length > 0 && <div className="max-h-28 overflow-auto flex flex-wrap gap-2 p-2">{results.map(n => <button key={n.id} className={buttonClass} onClick={() => void run(signal => ontologyRequest(`objects/${n.id}/graph`, undefined, signal), true)}>{n.canonical_name} · {n.type}</button>)}</div>}
+    {results.length > 0 && <div className="max-h-28 overflow-auto flex flex-wrap gap-2 p-2">{results.map(n => <button key={n.id} className={buttonClass} onClick={() => void run(signal => ontologyRequest(`objects/${n.id}/graph`, undefined, signal), true)}>{n.canonical_name} · {uiText(String(n.type))}</button>)}</div>}
     <div aria-live="polite" className="px-3 text-xs">
-      {busy && <div className="flex gap-2 py-2 text-[var(--cyan-primary)]"><LoaderCircle size={14} className="animate-spin" />Loading relationships…</div>}
+      {busy && <div className="flex gap-2 py-2 text-[var(--cyan-primary)]"><LoaderCircle size={14} className="animate-spin" />{uiText("Loading relationships…")}</div>}
       {error && <div role="alert" className="py-2 text-red-300">{error}</div>}
-      {graph.truncated && <div className="py-1 text-amber-300">Graph limit reached (250 nodes / 500 links). Refocus or reset to continue.</div>}
+      {graph.truncated && <div className="py-1 text-amber-300">{uiText("Graph limit reached (250 nodes / 500 links). Refocus or reset to continue.")}</div>}
       {graph.warnings?.map(w => <div key={w} className="py-1 text-amber-200">{w}</div>)}
     </div>
     <div className="flex-1 min-h-0 flex flex-col md:flex-row">
@@ -133,7 +136,7 @@ export default function EntityGraphPanel({ seed, objectId, intent='graph', onCon
           onNodeHover={node => setHoveredNode(node?.id || null)} onLinkHover={link => setHoveredLink(link?.id || null)}
           linkColor={link => link.provenance.some(p => p.kind === 'inferred') ? '#A67C43' : '#506574'} linkDirectionalArrowLength={4} linkDirectionalArrowRelPos={0.95}
           linkLineDash={link => link.provenance.some(p => p.kind === 'inferred') ? [4, 3] : []}
-          linkLabel={link => tooltip(link.link_type)}
+          linkLabel={link => tooltip(uiText(link.link_type))}
           nodeCanvasObjectMode={() => 'after'} nodeCanvasObject={(node, ctx, scale) => {
             const x = node.x || 0, y = node.y || 0;
             const radius = node.id === graph.root_id ? 15 : 11;
@@ -147,22 +150,23 @@ export default function EntityGraphPanel({ seed, objectId, intent='graph', onCon
             const source = link.source as unknown as GraphNode, target = link.target as unknown as GraphNode;
             if (source.x == null || target.x == null) return;
             if (scale < 1.5 && link.id !== hoveredLink && link.id !== selectedLink?.id && source.id !== hoveredNode && target.id !== hoveredNode) return;
-            ctx.font = `${9 / scale}px monospace`; ctx.fillStyle = '#9AAAB4'; ctx.textAlign = 'center'; ctx.fillText(link.link_type, (source.x + target.x) / 2, ((source.y || 0) + (target.y || 0)) / 2);
-          }} cooldownTicks={100} onEngineStop={() => { if (fittedRoot.current !== graph.root_id) { fittedRoot.current = graph.root_id; focus(); } }} /> : <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-sm text-[var(--text-secondary)]">Select an object on the map or resolve a name / identifier above.</div>}
-        <div className="absolute bottom-2 left-2 right-2 text-[10px] text-slate-400 pointer-events-none">{graph.nodes.length} objects · {graph.links.length} relationships · click to expand · dashed = inferred · history included</div>
+            ctx.font = `${9 / scale}px monospace`; ctx.fillStyle = '#9AAAB4'; ctx.textAlign = 'center'; ctx.fillText(uiText(link.link_type), (source.x + target.x) / 2, ((source.y || 0) + (target.y || 0)) / 2);
+          }} cooldownTicks={100} onEngineStop={() => { if (fittedRoot.current !== graph.root_id) { fittedRoot.current = graph.root_id; focus(); } }} /> : <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-sm text-[var(--text-secondary)]">{uiText("Select an object on the map or resolve a name / identifier above.")}</div>}
+        <div className="absolute bottom-2 left-2 right-2 text-[10px] text-slate-400 pointer-events-none">{graph.nodes.length}{" "}{uiText("objects ·")}{" "}{graph.links.length}{" "}{uiText("relationships · click to expand · dashed = inferred · history included")}</div>
       </div>
       <aside className="w-full md:w-80 max-h-[40vh] md:max-h-none overflow-y-auto border-t md:border-t-0 md:border-l border-[var(--border-primary)] p-3 space-y-3">
         <div className="flex flex-wrap gap-2 text-[10px]">{[...new Set(graph.nodes.map(n => n.type))].map(t => <span key={t} style={{ color: OBJECT_COLORS[t] || '#90A4AE' }}>● {t}</span>)}</div>
-        {selectedLink ? <><button className={buttonClass} onClick={() => setSelectedLink(null)}>← Object details</button><h3 className="text-sm text-[var(--gold-primary)]">{selectedLink.link_type}</h3><p className="text-xs">{graph.nodes.find(n => n.id === selectedLink.source)?.canonical_name} → {graph.nodes.find(n => n.id === selectedLink.target)?.canonical_name}</p><p className="text-xs">Confidence: {selectedLink.confidence == null ? 'not supplied' : `${Math.round(selectedLink.confidence * 100)}%`}</p>{(selectedLink.valid_from || selectedLink.valid_to) && <p className="text-xs">Valid: {selectedLink.valid_from || '?'} — {selectedLink.valid_to || '?'}</p>}<pre className="text-[11px] whitespace-pre-wrap break-words">{JSON.stringify(selectedLink.properties, null, 2)}</pre><EvidenceView items={selectedLink.provenance} /></> : selectedObject ? <>
-          <h3 className="text-sm text-[var(--gold-primary)]">{selectedObject.canonical_name}</h3><p className="text-xs">{selectedObject.type}{selectedObject.id === graph.root_id ? ' · ROOT' : ''}</p>
-          <button disabled={busy} className={buttonClass} onClick={() => expand(selectedObject)}>Expand relationships</button>
-          <button disabled={busy} className={`${buttonClass} ml-1`} onClick={() => void run(signal => ontologyRequest(`objects/${selectedObject.id}/graph`, undefined, signal), true)}>Make root</button>
+        {selectedLink ? <><button className={buttonClass} onClick={() => setSelectedLink(null)}>{uiText("← Object details")}</button><h3 className="text-sm text-[var(--gold-primary)]">{uiText(selectedLink.link_type)}</h3><p className="text-xs">{graph.nodes.find(n => n.id === selectedLink.source)?.canonical_name} → {graph.nodes.find(n => n.id === selectedLink.target)?.canonical_name}</p><p className="text-xs">{uiText("Confidence:")}{" "}{selectedLink.confidence == null ? uiText("not supplied") : `${Math.round(selectedLink.confidence * 100)}%`}</p>{(selectedLink.valid_from || selectedLink.valid_to) && <p className="text-xs">{uiText("Valid:")}{" "}{selectedLink.valid_from || '?'} — {selectedLink.valid_to || '?'}</p>}<pre className="text-[11px] whitespace-pre-wrap break-words">{JSON.stringify(selectedLink.properties, null, 2)}</pre><EvidenceView items={selectedLink.provenance} /></> : selectedObject ? <>
+          <h3 className="text-sm text-[var(--gold-primary)]">{selectedObject.canonical_name}</h3><p className="text-xs">{uiText(String(selectedObject.type))}{selectedObject.id === graph.root_id ? ' · ROOT' : ''}</p>
+          <AddToCaseButton reference={{kind:'object',id:selectedObject.id}}/>
+          <button disabled={busy} className={buttonClass} onClick={() => expand(selectedObject)}>{uiText("Expand relationships")}</button>
+          <button disabled={busy} className={`${buttonClass} ml-1`} onClick={() => void run(signal => ontologyRequest(`objects/${selectedObject.id}/graph`, undefined, signal), true)}>{uiText("Make root")}</button>
           <div className="text-[10px] break-all text-[var(--text-secondary)]">{selectedObject.id}</div>
-          <div className="flex gap-2"><button className={buttonClass} aria-pressed={detailTab === 'details'} onClick={() => setDetailTab('details')}>DETAILS / EVIDENCE</button><button className={buttonClass} aria-pressed={detailTab === 'history'} onClick={() => setDetailTab('history')}>HISTORY</button></div>
-          {detailTab === 'history' ? <ObjectHistory key={selectedObject.id} objectId={selectedObject.id} objectType={selectedObject.type} objectName={selectedObject.canonical_name} onMap={onMap} onJump={onClose} /> : <>{replay.state.mode==='replay'&&replay.selection?.object_id===selectedObject.id&&replay.selection.observation&&<section className="border border-cyan-400/40 p-2"><h4 className="text-cyan-300 text-xs">HISTORICAL EVIDENCE · {replay.selection.observation.timeline_at}</h4><EvidenceView items={replay.selection.observation.provenance}/><pre className="text-[10px] whitespace-pre-wrap">{JSON.stringify(replay.selection.observation.data,null,2)}</pre></section>}<details open><summary className="cursor-pointer text-xs">Properties & identifiers</summary><pre className="text-[11px] whitespace-pre-wrap break-words py-2">{JSON.stringify({ external_ids: selectedObject.external_ids, ...selectedObject.properties }, null, 2)}</pre></details><details open><summary className="cursor-pointer text-xs mb-2">Provenance (latest 50) / property evidence</summary><EvidenceView items={selectedObject.provenance} /></details></>}
+          <div className="flex gap-2"><button className={buttonClass} aria-pressed={detailTab === 'details'} onClick={() => setDetailTab('details')}>{uiText("DETAILS / EVIDENCE")}</button><button className={buttonClass} aria-pressed={detailTab === 'history'} onClick={() => setDetailTab('history')}>{uiText("HISTORY")}</button></div>
+          {detailTab === 'history' ? <ObjectHistory key={selectedObject.id} objectId={selectedObject.id} objectType={selectedObject.type} objectName={selectedObject.canonical_name} onMap={onMap} onJump={onClose} /> : <>{replay.state.mode==='replay'&&replay.selection?.object_id===selectedObject.id&&replay.selection.observation&&<section className="border border-cyan-400/40 p-2"><h4 className="text-cyan-300 text-xs">{uiText("HISTORICAL EVIDENCE ·")}{" "}{replay.selection.observation.timeline_at}</h4><EvidenceView items={replay.selection.observation.provenance}/><pre className="text-[10px] whitespace-pre-wrap">{JSON.stringify(replay.selection.observation.data,null,2)}</pre></section>}<details open><summary className="cursor-pointer text-xs">{uiText("Properties & identifiers")}</summary><pre className="text-[11px] whitespace-pre-wrap break-words py-2">{JSON.stringify({ external_ids: selectedObject.external_ids, ...selectedObject.properties }, null, 2)}</pre></details><details open><summary className="cursor-pointer text-xs mb-2">{uiText("Provenance (latest 50) / property evidence")}</summary><EvidenceView items={selectedObject.provenance} /></details></>}
           <div className="text-xs space-y-1">{graph.links.filter(l => l.source === selectedObject.id || l.target === selectedObject.id).map(l => <button className="block text-left text-[var(--cyan-primary)] hover:underline" key={l.id} onClick={() => setSelectedLink(l)}>{l.source === selectedObject.id ? '→' : '←'} {l.link_type} · {graph.nodes.find(n => n.id === (l.source === selectedObject.id ? l.target : l.source))?.canonical_name}</button>)}</div>
-        </> : <p className="text-xs text-[var(--text-secondary)]">Select a node or relationship to inspect its evidence.</p>}
-        <details><summary className="cursor-pointer text-xs">Loaded objects · keyboard navigation</summary>{graph.nodes.map(n => <button disabled={busy} className="block text-left text-xs py-1 hover:underline" key={n.id} onClick={() => expand(n)}>{n.canonical_name} · {n.type}</button>)}</details>
+        </> : <p className="text-xs text-[var(--text-secondary)]">{uiText("Select a node or relationship to inspect its evidence.")}</p>}
+        <details><summary className="cursor-pointer text-xs">{uiText("Loaded objects · keyboard navigation")}</summary>{graph.nodes.map(n => <button disabled={busy} className="block text-left text-xs py-1 hover:underline" key={n.id} onClick={() => expand(n)}>{n.canonical_name} · {uiText(String(n.type))}</button>)}</details>
       </aside>
     </div>
   </section>;

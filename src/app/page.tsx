@@ -1,5 +1,7 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 import AirThreatProvider, { useAirThreat } from '@/components/AirThreatProvider';
+import CaseProvider from '@/components/CaseProvider';
 
 import { WORLD_DEFAULTS } from '@/lib/world/types';
 
@@ -74,6 +76,7 @@ function useIsMobile() {
   return isMobile;
 }
 const UptimeClock = () => {
+  const {t:uiText}=useUILocale();
   const [uptime, setUptime] = useState('00:00:00');
   const startTime = useRef(0);
   if (startTime.current === 0) startTime.current = Date.now();
@@ -84,10 +87,11 @@ const UptimeClock = () => {
     }, 1000);
     return () => clearInterval(iv);
   }, []);
-  return <span className="hidden lg:inline">UPTIME: <span className="text-[var(--gold-primary)]">{uptime}</span></span>;
+  return <span className="hidden lg:inline">{uiText("UPTIME:")}{" "}<span className="text-[var(--gold-primary)]">{uptime}</span></span>;
 };
 
 const ZuluClock = () => {
+
   const [time, setTime] = useState('');
   useEffect(() => {
     const iv = setInterval(() => {
@@ -101,6 +105,7 @@ const ZuluClock = () => {
 
 /** Real entity count — no fake throughput metrics */
 const ActiveEntityCount = ({ data }: { data: Record<string, unknown[]> }) => {
+
   const count = useMemo(() => {
     if (!data) return 0;
     return Object.values(data).reduce((sum, v) => sum + (Array.isArray(v) ? v.length : 0), 0);
@@ -123,6 +128,7 @@ function ViewSegment({ active, onClick, title, icon: Icon, label, layoutId }: {
   label: string;
   layoutId: string;
 }) {
+  const {t:uiText}=useUILocale();
   return (
     <button
       type="button"
@@ -142,7 +148,7 @@ function ViewSegment({ active, onClick, title, icon: Icon, label, layoutId }: {
         />
       )}
       <Icon className="w-3.5 h-3.5 relative z-10" />
-      <span className="hidden md:inline relative z-10">{label}</span>
+      <span className="hidden md:inline relative z-10">{uiText(String(label))}</span>
     </button>
   );
 }
@@ -157,8 +163,9 @@ const newsTransform = (d: { news?: unknown[]; sources?: unknown[]; timestamp?: s
   alert_pins: (d.news ?? []).filter(n => (n as { place?: unknown } | null)?.place),
 });
 
-export default function Page() { return <WorldReplayProvider><AirThreatProvider><Dashboard /></AirThreatProvider></WorldReplayProvider>; }
+export default function Page() { return <WorldReplayProvider><AirThreatProvider><CaseProvider><Dashboard /></CaseProvider></AirThreatProvider></WorldReplayProvider>; }
 function Dashboard() {
+  const {t:uiText}=useUILocale();
   const airThreat = useAirThreat();
   const replay = useWorldReplay();
   const replaying = replay.state.mode === 'replay';
@@ -186,6 +193,7 @@ function Dashboard() {
   const [mapView, setMapView] = useState({ zoom: 2.5, latitude: 20 });
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number; lng: number; zoom?: number; alertId?: string; ts: number } | null>(null);
   const showInvestigation = useCallback((focus: InvestigationMapFocus) => { setInvestigation(focus); if (focus.objectId) { setGraphObjectId(focus.objectId); setGraphSeed(undefined); } setFlyToLocation({ lat: focus.lat, lng: focus.lng, zoom: focus.track ? 6 : 8, ts: Date.now() }); setGraphOpen(false); setIntelPanel(null); }, []);
+  useEffect(()=>{const focus=(e:Event)=>showInvestigation((e as CustomEvent<InvestigationMapFocus>).detail);const object=(e:Event)=>{setGraphObjectId((e as CustomEvent<string>).detail);setGraphSeed(undefined);setGraphIntent('evidence');setGraphOpen(true);};window.addEventListener('osiris:case-focus',focus);window.addEventListener('osiris:case-object',object);return()=>{window.removeEventListener('osiris:case-focus',focus);window.removeEventListener('osiris:case-object',object);};},[showInvestigation]);
   const openIntelligenceObject = useCallback((id: string) => { setGraphIntent("graph"); setGraphSeed(undefined); setGraphObjectId(id); setGraphOpen(true); setIntelPanel(null); }, []);
   useEffect(() => {
     if (!healthyOnly) return;
@@ -1153,9 +1161,7 @@ function Dashboard() {
                 transition={{ delay: 1.2, duration: 0.8, ease: 'easeInOut' }}
                 className="overflow-hidden whitespace-nowrap"
               >
-                <p className="text-[11px] md:text-[10px] font-mono tracking-[0.5em] text-[var(--gold-primary)]" style={{ opacity: 0.8 }}>
-                  GLOBAL INTELLIGENCE PLATFORM
-                </p>
+                <p className="text-[11px] md:text-[10px] font-mono tracking-[0.5em] text-[var(--gold-primary)]" style={{ opacity: 0.8 }}>{uiText("GLOBAL INTELLIGENCE PLATFORM")}{" "}</p>
               </motion.div>
             </div>
 
@@ -1188,7 +1194,7 @@ function Dashboard() {
                     className="absolute text-[10px] font-mono tracking-[0.25em]"
                     style={{ color: i === 3 ? 'var(--cyan-primary)' : 'var(--text-muted)' }}
                   >
-                    {stage.text}
+                    {uiText(stage.text)}
                   </motion.span>
                 ))}
               </div>
@@ -1366,11 +1372,11 @@ function Dashboard() {
       >
         {/* Unified Control Strip */}
         <div className="flex items-center gap-[3px] p-[3px] pointer-events-auto rounded-xl border border-[var(--border-primary)] bg-[var(--bg-panel)] backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.55)]">
-          <ViewSegment layoutId="view-projection" active={mapProjection === 'globe'} onClick={() => setMapProjection('globe')} title="3D Globe" icon={Globe} label="3D" />
-          <ViewSegment layoutId="view-projection" active={mapProjection === 'mercator'} onClick={selectFlatMap} title="2D Map" icon={MapPinned} label="2D" />
+          <ViewSegment layoutId="view-projection" active={mapProjection === 'globe'} onClick={() => setMapProjection('globe')} title={uiText("3D Globe")} icon={Globe} label="3D" />
+          <ViewSegment layoutId="view-projection" active={mapProjection === 'mercator'} onClick={selectFlatMap} title={uiText("2D Map")} icon={MapPinned} label="2D" />
           <div className="w-px h-5 mx-1 bg-[var(--border-secondary)]" />
-          <ViewSegment layoutId="view-style" active={mapStyle === 'dark'} onClick={() => setMapStyle('dark')} title="Night Mode" icon={Moon} label="MAP" />
-          <ViewSegment layoutId="view-style" active={mapStyle === 'satellite'} onClick={() => setMapStyle('satellite')} title="Satellite View" icon={Satellite} label="SAT" />
+          <ViewSegment layoutId="view-style" active={mapStyle === 'dark'} onClick={() => setMapStyle('dark')} title={uiText("Night Mode")} icon={Moon} label="MAP" />
+          <ViewSegment layoutId="view-style" active={mapStyle === 'satellite'} onClick={() => setMapStyle('satellite')} title={uiText("Satellite View")} icon={Satellite} label="SAT" />
         </div>
 
 
@@ -1392,12 +1398,11 @@ function Dashboard() {
           </svg>
           <div className="flex flex-col items-start gap-0.5">
             <h1 className="text-lg md:text-xl font-bold tracking-[0.4em] text-[#D4AF37] font-mono">OSIRIS</h1>
-            <span className="text-[9px] md:text-[10px] font-mono tracking-[0.2em] opacity-80 uppercase text-[#D4AF37]">OPEN SOURCE INTELLIGENCE</span>
+            <span className="text-[9px] md:text-[10px] font-mono tracking-[0.2em] opacity-80 uppercase text-[#D4AF37]">{uiText("OPEN SOURCE INTELLIGENCE")}</span>
           </div>
         </div>
         <div className="flex items-center gap-3 mt-1.5 pl-[44px] min-w-0 pr-4">
-          <span className="text-[9px] md:text-[9px] text-[var(--text-muted)] font-mono tracking-[0.2em] md:tracking-[0.3em] uppercase opacity-40 truncate">
-            REAL-TIME GLOBAL MONITORING <span className="hidden md:inline">· FLIGHTS · MARITIME · SATELLITES · CCTV · WEATHER · CYBER THREATS</span>
+          <span className="text-[9px] md:text-[9px] text-[var(--text-muted)] font-mono tracking-[0.2em] md:tracking-[0.3em] uppercase opacity-40 truncate">{uiText("REAL-TIME GLOBAL MONITORING")}{" "}<span className="hidden md:inline">{uiText("· FLIGHTS · MARITIME · SATELLITES · CCTV · WEATHER · CYBER THREATS")}</span>
           </span>
         </div>
       </motion.div>
@@ -1410,19 +1415,19 @@ function Dashboard() {
           <ZuluClock />
         </span>
 
-        <span className="flex items-center gap-1" title="Backend connection status">STATUS: <span className={backendStatus === 'connected' ? 'text-[var(--alert-green)]' : 'text-[var(--alert-red)]'}>{backendStatus === 'connected' ? 'LIVE' : backendStatus.toUpperCase()}</span></span>
+        <span className="flex items-center gap-1" title={uiText("Backend connection status")}>{uiText("STATUS:")}{" "}<span className={backendStatus === 'connected' ? 'text-[var(--alert-green)]' : 'text-[var(--alert-red)]'}>{backendStatus === 'connected' ? uiText("LIVE") : uiText(backendStatus.toUpperCase())}</span></span>
 
-        <span className="hidden lg:inline-flex items-center gap-1" title="Number of active data layers">
+        <span className="hidden lg:inline-flex items-center gap-1" title={uiText("Number of active data layers")}>
           <span className="text-[var(--cyan-primary)] font-bold">{Object.values(activeLayers).filter(Boolean).length}</span>
-          <span className="opacity-60">LAYERS</span>
+          <span className="opacity-60">{uiText("LAYERS")}</span>
         </span>
 
-        <span className="hidden lg:inline-flex items-center gap-1" title="Tracked entities on map">
+        <span className="hidden lg:inline-flex items-center gap-1" title={uiText("Tracked entities on map")}>
           <ActiveEntityCount data={data} />
-          <span className="opacity-60">ENTITIES</span>
+          <span className="opacity-60">{uiText("ENTITIES")}</span>
         </span>
 
-        {spaceWeather && <span className="hidden lg:inline" title={spaceWeather.kp_index == null ? 'Geomagnetic Storm Index — no reading from NOAA' : `Geomagnetic Storm Index — Kp${spaceWeather.kp_index}`}>SOLAR: <span style={{ color: spaceWeather.storm_color, fontWeight: 700 }}>{spaceWeather.kp_index == null ? 'N/A' : `Kp${spaceWeather.kp_index}`}</span></span>}
+        {spaceWeather && <span className="hidden lg:inline" title={spaceWeather.kp_index == null ? 'Geomagnetic Storm Index — no reading from NOAA' : `Geomagnetic Storm Index — Kp${spaceWeather.kp_index}`}>{uiText("SOLAR:")}{" "}<span style={{ color: spaceWeather.storm_color, fontWeight: 700 }}>{spaceWeather.kp_index == null ? 'N/A' : `Kp${spaceWeather.kp_index}`}</span></span>}
 
         <span className="text-[11px] font-bold tracking-[0.2em] text-[var(--text-muted)] opacity-50">V.4.1</span>
         
@@ -1430,12 +1435,12 @@ function Dashboard() {
 
         <a href='https://ko-fi.com/M8D41ZYW4Z' target='_blank' rel='noopener noreferrer' className="pointer-events-auto glass-panel px-3 py-1.5 flex items-center gap-1.5 text-[9px] font-mono tracking-widest hover:opacity-80 transition-opacity border-[var(--gold-primary)]/40 bg-[var(--gold-primary)]/10 ml-3 shadow-[0_0_10px_rgba(255,215,0,0.1)]">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--gold-primary)] animate-osiris-pulse" />
-          <span className="text-[var(--gold-primary)] font-bold">SUPPORT</span>
+          <span className="text-[var(--gold-primary)] font-bold">{uiText("SUPPORT")}</span>
         </a>
 
         <a href='https://shop.osirisai.live/' target='_blank' rel='noopener noreferrer' className="pointer-events-auto glass-panel px-3 py-1.5 flex items-center gap-1.5 text-[9px] font-mono tracking-widest hover:opacity-80 transition-opacity border-[var(--cyan-primary)]/40 bg-[var(--cyan-primary)]/10 ml-3 shadow-[0_0_10px_rgba(0,229,255,0.1)]">
           <ShoppingBag className="w-3 h-3 text-[var(--cyan-primary)]" />
-          <span className="text-[var(--cyan-primary)] font-bold">MERCH</span>
+          <span className="text-[var(--cyan-primary)] font-bold">{uiText("MERCH")}</span>
         </a>
       </motion.div>
 
@@ -1448,14 +1453,14 @@ function Dashboard() {
             <TokenPanel />
             <a href='https://ko-fi.com/M8D41ZYW4Z' target='_blank' rel='noopener noreferrer' className="glass-panel px-2 py-1 flex items-center gap-1.5 text-[9px] font-mono tracking-widest hover:opacity-80 transition-opacity border-[var(--gold-primary)]/40 bg-[var(--gold-primary)]/10">
               <div className="w-1 h-1 rounded-full bg-[var(--gold-primary)] animate-osiris-pulse" />
-              <span className="text-[var(--gold-primary)] font-bold">SUPPORT</span>
+              <span className="text-[var(--gold-primary)] font-bold">{uiText("SUPPORT")}</span>
             </a>
           </div>
           {/* A third pill on this row pushes $OSIRIS under the wordmark on a
               375px phone, so the shop link takes a line of its own. */}
           <a href='https://shop.osirisai.live/' target='_blank' rel='noopener noreferrer' className="glass-panel px-2 py-1 flex items-center gap-1.5 text-[9px] font-mono tracking-widest hover:opacity-80 transition-opacity border-[var(--cyan-primary)]/40 bg-[var(--cyan-primary)]/10">
             <ShoppingBag className="w-2.5 h-2.5 text-[var(--cyan-primary)]" />
-            <span className="text-[var(--cyan-primary)] font-bold">MERCH</span>
+            <span className="text-[var(--cyan-primary)] font-bold">{uiText("MERCH")}</span>
           </a>
         </motion.div>
       )}
@@ -1470,7 +1475,7 @@ function Dashboard() {
       {/* ── RIGHT TOOL STRIP (desktop only — mobile uses bottom nav) ── */}
       {!isMobile && <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-[250] pointer-events-auto bg-black/40 backdrop-blur-sm p-1 rounded-full border border-white/5">
         <div className="relative group">
-          <button onClick={() => { setShowIntel(!showIntel); setShowMarkets(false); setShowAlerts(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showIntel ? 'bg-[var(--cyan-primary)]/20' : 'hover:bg-white/10'}`} title="OSINT Recon — IP lookup, network sweep, geolocation" aria-label="OSINT Recon" aria-expanded={showIntel}>
+          <button onClick={() => { setShowIntel(!showIntel); setShowMarkets(false); setShowAlerts(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showIntel ? 'bg-[var(--cyan-primary)]/20' : 'hover:bg-white/10'}`} title={uiText("OSINT Recon — IP lookup, network sweep, geolocation")} aria-label={uiText("OSINT Recon")} aria-expanded={showIntel}>
             <Radar className={`w-4 h-4 ${showIntel ? 'text-[var(--cyan-primary)]' : 'text-white/60'}`} />
             {showIntel && (
               <span
@@ -1479,7 +1484,7 @@ function Dashboard() {
               />
             )}
           </button>
-          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">RECON</span>
+          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">{uiText("RECON")}</span>
           <AnimatePresence>
             {showIntel && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute right-12 top-1/2 -translate-y-1/2 w-80">
@@ -1496,7 +1501,7 @@ function Dashboard() {
         </div>
 
         <div className="relative group">
-          <button onClick={() => { setShowIntel(false); setShowAlerts(false); setShowMarkets(false); setShowSpaceCam(v => !v); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showSpaceCam ? 'bg-[#00E5FF]/20' : 'hover:bg-white/10'}`} title="Live from Space — 24/7 video downlink from the ISS" aria-label="Live from Space" aria-expanded={showSpaceCam}>
+          <button onClick={() => { setShowIntel(false); setShowAlerts(false); setShowMarkets(false); setShowSpaceCam(v => !v); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showSpaceCam ? 'bg-[#00E5FF]/20' : 'hover:bg-white/10'}`} title={uiText("Live from Space — 24/7 video downlink from the ISS")} aria-label={uiText("Live from Space")} aria-expanded={showSpaceCam}>
             <Radio className={`w-4 h-4 ${showSpaceCam ? 'text-[#00E5FF]' : 'text-white/60'}`} />
             {showSpaceCam && (
               <span
@@ -1505,7 +1510,7 @@ function Dashboard() {
               />
             )}
           </button>
-          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">SPACE</span>
+          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">{uiText("SPACE")}</span>
           <AnimatePresence>
             {showSpaceCam && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute right-12 top-1/2 -translate-y-1/2 w-80">
@@ -1516,7 +1521,7 @@ function Dashboard() {
         </div>
 
         <div className="relative group">
-          <button onClick={() => { setShowMarkets(!showMarkets); setShowIntel(false); setShowAlerts(false); setShowSpaceCam(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showMarkets ? 'bg-[var(--gold-primary)]/20' : 'hover:bg-white/10'}`} title="Markets — crypto prices, space weather, global indices" aria-label="Markets" aria-expanded={showMarkets}>
+          <button onClick={() => { setShowMarkets(!showMarkets); setShowIntel(false); setShowAlerts(false); setShowSpaceCam(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showMarkets ? 'bg-[var(--gold-primary)]/20' : 'hover:bg-white/10'}`} title={uiText("Markets — crypto prices, space weather, global indices")} aria-label={uiText("Markets")} aria-expanded={showMarkets}>
             <BarChart3 className={`w-4 h-4 ${showMarkets ? 'text-[var(--gold-primary)]' : 'text-white/60'}`} />
             {showMarkets && (
               <span
@@ -1525,7 +1530,7 @@ function Dashboard() {
               />
             )}
           </button>
-          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">MARKETS</span>
+          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">{uiText("MARKETS")}</span>
           <AnimatePresence>
             {showMarkets && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute right-12 top-1/2 -translate-y-1/2 w-80">
@@ -1536,7 +1541,7 @@ function Dashboard() {
         </div>
 
         <div className="relative group">
-          <button onClick={() => { setShowAlerts(!showAlerts); setShowIntel(false); setShowMarkets(false); setShowDrawing(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showAlerts ? 'bg-[#FF3D3D]/20' : 'hover:bg-white/10'}`} title="Live Alerts — earthquakes, conflicts, breaking news" aria-label="Live Alerts" aria-expanded={showAlerts}>
+          <button onClick={() => { setShowAlerts(!showAlerts); setShowIntel(false); setShowMarkets(false); setShowDrawing(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showAlerts ? 'bg-[#FF3D3D]/20' : 'hover:bg-white/10'}`} title={uiText("Live Alerts — earthquakes, conflicts, breaking news")} aria-label={uiText("Live Alerts")} aria-expanded={showAlerts}>
             <AlertTriangle className={`w-4 h-4 ${showAlerts ? 'text-[#FF3D3D]' : 'text-white/60'}`} />
             {showAlerts && (
               <span
@@ -1545,7 +1550,7 @@ function Dashboard() {
               />
             )}
           </button>
-          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">ALERTS</span>
+          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">{uiText("ALERTS")}</span>
           <AnimatePresence>
             {showAlerts && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute right-12 top-1/2 -translate-y-1/2 w-80">
@@ -1556,7 +1561,7 @@ function Dashboard() {
         </div>
 
         <div className="relative group">
-          <button onClick={() => { setShowDrawing(!showDrawing); setShowIntel(false); setShowMarkets(false); setShowAlerts(false); setShowSpaceCam(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showDrawing ? 'bg-[#00E5FF]/20' : 'hover:bg-white/10'}`} title="Draw — measure areas of interest on the map" aria-label="Draw" aria-expanded={showDrawing}>
+          <button onClick={() => { setShowDrawing(!showDrawing); setShowIntel(false); setShowMarkets(false); setShowAlerts(false); setShowSpaceCam(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showDrawing ? 'bg-[#00E5FF]/20' : 'hover:bg-white/10'}`} title={uiText("Draw — measure areas of interest on the map")} aria-label={uiText("Draw")} aria-expanded={showDrawing}>
             <PenLine className={`w-4 h-4 ${showDrawing ? 'text-[#00E5FF]' : 'text-white/60'}`} />
             {showDrawing && (
               <span
@@ -1565,11 +1570,11 @@ function Dashboard() {
               />
             )}
           </button>
-          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">DRAW</span>
+          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">{uiText("DRAW")}</span>
         </div>
 
         <div className="relative group">
-          <button onClick={() => { setShowDirections(!showDirections); if (showDirections) { setActiveRoute(null); } setShowDesktopSearch(false); setShowIntel(false); setShowMarkets(false); setShowAlerts(false); setShowSpaceCam(false); setShowDrawing(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showDirections ? 'bg-[var(--gold-primary)]/20' : 'hover:bg-white/10'}`} title="Directions — turn-by-turn routing" aria-label="Directions" aria-expanded={showDirections}>
+          <button onClick={() => { setShowDirections(!showDirections); if (showDirections) { setActiveRoute(null); } setShowDesktopSearch(false); setShowIntel(false); setShowMarkets(false); setShowAlerts(false); setShowSpaceCam(false); setShowDrawing(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showDirections ? 'bg-[var(--gold-primary)]/20' : 'hover:bg-white/10'}`} title={uiText("Directions — turn-by-turn routing")} aria-label={uiText("Directions")} aria-expanded={showDirections}>
             <Route className={`w-4 h-4 ${showDirections ? 'text-[var(--gold-primary)]' : 'text-white/60'}`} />
             {showDirections && (
               <span
@@ -1578,11 +1583,11 @@ function Dashboard() {
               />
             )}
           </button>
-          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">ROUTE</span>
+          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">{uiText("ROUTE")}</span>
         </div>
 
         <div className="relative group">
-          <button onClick={() => { setShowDesktopSearch(!showDesktopSearch); setShowIntel(false); setShowMarkets(false); setShowAlerts(false); setShowSpaceCam(false); setShowDrawing(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showDesktopSearch ? 'bg-[var(--gold-primary)]/20' : 'hover:bg-white/10'}`} title="Search — find locations, cities, coordinates" aria-label="Search" aria-expanded={showDesktopSearch}>
+          <button onClick={() => { setShowDesktopSearch(!showDesktopSearch); setShowIntel(false); setShowMarkets(false); setShowAlerts(false); setShowSpaceCam(false); setShowDrawing(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showDesktopSearch ? 'bg-[var(--gold-primary)]/20' : 'hover:bg-white/10'}`} title={uiText("Search — find locations, cities, coordinates")} aria-label={uiText("Search")} aria-expanded={showDesktopSearch}>
             <Search className={`w-4 h-4 ${showDesktopSearch ? 'text-[var(--gold-primary)]' : 'text-white/60'}`} />
             {showDesktopSearch && (
               <span
@@ -1591,7 +1596,7 @@ function Dashboard() {
               />
             )}
           </button>
-          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">SEARCH</span>
+          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">{uiText("SEARCH")}</span>
           <AnimatePresence>
             {showDesktopSearch && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute right-12 top-1/2 -translate-y-1/2 w-80">
@@ -1606,7 +1611,7 @@ function Dashboard() {
 
         {/* ── ARCGIS INTEL ── */}
         <div className="relative group">
-          <button onClick={() => { setShowArcGIS(!showArcGIS); setShowRemote(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showArcGIS ? 'bg-[var(--gold-primary)]/20' : 'hover:bg-white/10'}`} title="ArcGIS — search & import geospatial intel layers" aria-label="ArcGIS" aria-expanded={showArcGIS}>
+          <button onClick={() => { setShowArcGIS(!showArcGIS); setShowRemote(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showArcGIS ? 'bg-[var(--gold-primary)]/20' : 'hover:bg-white/10'}`} title={uiText("ArcGIS — search & import geospatial intel layers")} aria-label="ArcGIS" aria-expanded={showArcGIS}>
             <Database className={`w-4 h-4 ${showArcGIS ? 'text-[var(--gold-primary)]' : 'text-white/60'}`} />
             {showArcGIS && (
               <span
@@ -1640,7 +1645,7 @@ function Dashboard() {
 
         {/* ── WORLD REMOTE ── */}
         <div className="relative group">
-          <button onClick={() => { setShowRemote(!showRemote); setShowArcGIS(false); setShowIntel(false); setShowMarkets(false); setShowAlerts(false); setShowSpaceCam(false); setShowDrawing(false); setShowDesktopSearch(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showRemote ? 'bg-[var(--cyan-primary)]/20' : 'hover:bg-white/10'}`} title="World Remote — control nearby Bluetooth devices (TVs, speakers, AC)" aria-label="World Remote" aria-expanded={showRemote}>
+          <button onClick={() => { setShowRemote(!showRemote); setShowArcGIS(false); setShowIntel(false); setShowMarkets(false); setShowAlerts(false); setShowSpaceCam(false); setShowDrawing(false); setShowDesktopSearch(false); }} className={`relative w-8 h-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 ${showRemote ? 'bg-[var(--cyan-primary)]/20' : 'hover:bg-white/10'}`} title={uiText("World Remote — control nearby Bluetooth devices (TVs, speakers, AC)")} aria-label={uiText("World Remote")} aria-expanded={showRemote}>
             <Bluetooth className={`w-4 h-4 ${showRemote ? 'text-[var(--cyan-primary)]' : 'text-white/60'}`} />
             {showRemote && (
               <span
@@ -1649,7 +1654,7 @@ function Dashboard() {
               />
             )}
           </button>
-          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">REMOTE</span>
+          <span className="absolute right-11 top-1/2 -translate-y-1/2 px-2 py-1 text-[9px] font-mono tracking-wider text-white/80 bg-black/80 backdrop-blur-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none">{uiText("REMOTE")}</span>
           <AnimatePresence>
             {showRemote && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute right-12 top-1/2 -translate-y-1/2 w-80">
@@ -1691,9 +1696,9 @@ function Dashboard() {
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-[#FF4081] animate-osiris-pulse" />
                   <span className="text-[11px] font-mono font-bold text-white tracking-wider">{liveFeedName}</span>
-                  <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono text-[10px] font-bold">LIVE STREAM</span>
+                  <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono text-[10px] font-bold">{uiText("LIVE STREAM")}</span>
                   {!liveFeedEmbedAllowed && (
-                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-mono text-[10px]">EXTERNAL ONLY</span>
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-mono text-[10px]">{uiText("EXTERNAL ONLY")}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-3">
@@ -1703,7 +1708,7 @@ function Dashboard() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--border-primary)] hover:bg-[var(--gold-primary)] hover:text-black text-white transition-colors text-[10px] font-mono"
                   >
-                    <span>Open in YouTube</span>
+                    <span>{uiText("Open in YouTube")}</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                   <button onClick={() => setLiveFeedUrl(null)} className="text-white/70 hover:text-white transition-colors p-1">
@@ -1728,19 +1733,16 @@ function Dashboard() {
                     <div className="w-14 h-14 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20 flex items-center justify-center mx-auto mb-4">
                       <ExternalLink className="w-6 h-6 text-[#39FF14]" />
                     </div>
-                    <p className="text-[12px] font-mono font-bold text-white tracking-widest mb-2">EMBED RESTRICTED</p>
+                    <p className="text-[12px] font-mono font-bold text-white tracking-widest mb-2">{uiText("EMBED RESTRICTED")}</p>
                     <p className="text-[10px] font-mono text-white/50 mb-6 max-w-xs">
-                      {liveFeedName} does not allow third-party embedding. Click below to open the live stream directly.
-                    </p>
+                      {liveFeedName}{" "}{uiText("does not allow third-party embedding. Click below to open the live stream directly.")}{" "}</p>
                     <a
                       href={getYouTubeWatchUrl(liveFeedUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-6 py-2.5 rounded border border-[#39FF14]/40 text-[#39FF14] font-mono text-[11px] hover:bg-[#39FF14]/10 transition-colors tracking-wider"
                     >
-                      <ExternalLink className="w-4 h-4" />
-                      OPEN LIVE STREAM
-                    </a>
+                      <ExternalLink className="w-4 h-4" />{uiText("OPEN LIVE STREAM")}{" "}</a>
                   </div>
                 </div>
               )}
@@ -1750,8 +1752,7 @@ function Dashboard() {
                 <div className="bg-[#111]/90 px-4 py-2.5 border-t border-[var(--border-primary)] flex items-center gap-2.5">
                   <AlertTriangle className="w-4 h-4 text-[var(--gold-primary)] shrink-0" />
                   <span className="text-[10px] font-mono text-white/70 leading-relaxed">
-                    If you see &ldquo;Video unavailable&rdquo;, use <strong className="text-[var(--gold-primary)]">Open in YouTube</strong> above.
-                  </span>
+                    If you see &ldquo;Video unavailable&rdquo;, use <strong className="text-[var(--gold-primary)]">{uiText("Open in YouTube")}</strong>{" "}{uiText("above.")}{" "}</span>
                 </div>
               )}
             </motion.div>
@@ -1806,7 +1807,7 @@ function Dashboard() {
                     className={`mobile-nav-btn ${active ? 'active' : ''}`}
                   >
                     <tab.icon className={`w-4 h-4 ${tab.id === 'recon' ? 'text-[var(--cyan-primary)]' : ''}`} />
-                    <span className={tab.id === 'recon' ? 'text-[var(--cyan-primary)]' : ''}>{tab.label}</span>
+                    <span className={tab.id === 'recon' ? 'text-[var(--cyan-primary)]' : ''}>{uiText(String(tab.label))}</span>
                   </button>
                 );
               })}
@@ -1826,7 +1827,7 @@ function Dashboard() {
                 <div className="px-3 pb-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="hud-text text-[10px] text-[var(--text-primary)]">
-                      {mobilePanel === 'layers' ? 'LAYERS & STATS' : mobilePanel === 'markets' ? 'MARKETS & INTEL' : mobilePanel === 'intel' ? 'INTEL FEED' : mobilePanel === 'recon' ? 'OSIRIS RECON' : mobilePanel === 'remote' ? 'WORLD REMOTE' : 'SEARCH'}
+                      {mobilePanel === 'layers' ? 'LAYERS & STATS' : mobilePanel === 'markets' ? 'MARKETS & INTEL' : mobilePanel === 'intel' ? 'INTEL FEED' : mobilePanel === 'recon' ? 'OSIRIS RECON' : mobilePanel === 'remote' ? 'WORLD REMOTE' : uiText("SEARCH")}
                     </span>
                     <button onClick={() => setMobilePanel(null)} className="text-[var(--text-muted)] p-1"><X className="w-4 h-4" /></button>
                   </div>
@@ -1834,11 +1835,11 @@ function Dashboard() {
                     <>
                       <div className="glass-panel-sm p-2 mb-2">
                         <div className="grid grid-cols-5 gap-1 text-center">
-                          <div><div className="hud-label" style={{fontSize:'9px'}}>AIR</div><div className="hud-value text-[10px]">{totalFlights.toLocaleString()}</div></div>
-                          <div><div className="hud-label" style={{fontSize:'9px'}}>SAT</div><div className="hud-value text-[10px]">{(data.satellites?.length||0)}</div></div>
-                          <div><div className="hud-label" style={{fontSize:'9px'}}>CAM</div><div className="hud-value text-[10px]">{(data.cameras?.length||0)}</div></div>
-                          <div><div className="hud-label" style={{fontSize:'9px'}}>WX</div><div className="hud-value text-[10px]" style={{color:'var(--accent-weather)'}}>{(data.weather_events?.length||0)}</div></div>
-                          <div><div className="hud-label" style={{fontSize:'9px'}}>NUC</div><div className="hud-value text-[10px]" style={{color:'var(--accent-nuclear)'}}>{(data.infrastructure?.length||0)}</div></div>
+                          <div><div className="hud-label" style={{fontSize:'9px'}}>{uiText("AIR")}</div><div className="hud-value text-[10px]">{totalFlights.toLocaleString()}</div></div>
+                          <div><div className="hud-label" style={{fontSize:'9px'}}>{uiText("SAT")}</div><div className="hud-value text-[10px]">{(data.satellites?.length||0)}</div></div>
+                          <div><div className="hud-label" style={{fontSize:'9px'}}>{uiText("CAM")}</div><div className="hud-value text-[10px]">{(data.cameras?.length||0)}</div></div>
+                          <div><div className="hud-label" style={{fontSize:'9px'}}>{uiText("WX")}</div><div className="hud-value text-[10px]" style={{color:'var(--accent-weather)'}}>{(data.weather_events?.length||0)}</div></div>
+                          <div><div className="hud-label" style={{fontSize:'9px'}}>{uiText("NUC")}</div><div className="hud-value text-[10px]" style={{color:'var(--accent-nuclear)'}}>{(data.infrastructure?.length||0)}</div></div>
                         </div>
                       </div>
                       <LayerPanel {...terrainPanelProps} data={data} activeLayers={activeLayers} setActiveLayers={setActiveLayers} isMobile={true} theme={osirisTheme} setTheme={setOsirisTheme} capabilities={capabilities} />
@@ -1882,16 +1883,16 @@ function Dashboard() {
       {!isMobile && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 3, duration: 0.8 }} className="desktop-only absolute bottom-8 z-[200] pointer-events-auto" style={{ left: '72px' }}>
           <div className="flex items-center gap-5 text-[9px] font-mono tracking-widest text-[var(--text-muted)] opacity-60">
-            <div className="flex gap-2 items-center" title="Cursor coordinates (hover over map)">
-              <span>CURSOR</span>
+            <div className="flex gap-2 items-center" title={uiText("Cursor coordinates (hover over map)")}>
+              <span>{uiText("CURSOR")}</span>
               <span ref={coordsDisplayRef} className="text-[var(--gold-primary)] font-bold tabular-nums">—</span>
             </div>
-            <div className="flex gap-2 items-center" title="Reverse-geocoded location name">
-              <span>LOCATION</span>
-              <span className="text-[var(--cyan-primary)] truncate max-w-[200px]">{locationLabel || 'HOVER MAP'}</span>
+            <div className="flex gap-2 items-center" title={uiText("Reverse-geocoded location name")}>
+              <span>{uiText("LOCATION")}</span>
+              <span className="text-[var(--cyan-primary)] truncate max-w-[200px]">{locationLabel || uiText('HOVER MAP')}</span>
             </div>
-            <div className="flex gap-2 items-center" title="Current zoom level">
-              <span>ZOOM</span>
+            <div className="flex gap-2 items-center" title={uiText("Current zoom level")}>
+              <span>{uiText("ZOOM")}</span>
               <span className="text-[var(--gold-primary)] font-bold tabular-nums">{mapView.zoom.toFixed(1)}</span>
             </div>
           </div>
@@ -1905,31 +1906,31 @@ function Dashboard() {
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="absolute top-16 md:top-20 left-2 right-2 md:left-1/2 md:right-auto md:-translate-x-1/2 z-[300] md:w-[480px] max-h-[65vh] overflow-y-auto styled-scrollbar">
           <div className="glass-panel p-5 osiris-glow">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-mono font-bold text-[var(--gold-primary)] tracking-wider">REGION DOSSIER</h2>
+              <h2 className="text-sm font-mono font-bold text-[var(--gold-primary)] tracking-wider">{uiText("REGION DOSSIER")}</h2>
               <button onClick={() => { setRegionDossier(null); setDossierLoading(false); }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs">✕</button>
             </div>
             {dossierLoading ? (
               <div className="text-center py-8">
                 <div className="w-5 h-5 border-2 border-[var(--gold-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <span className="text-[9px] font-mono text-[var(--text-muted)] tracking-widest">COMPILING INTEL...</span>
+                <span className="text-[9px] font-mono text-[var(--text-muted)] tracking-widest">{uiText("COMPILING INTEL...")}</span>
               </div>
             ) : regionDossier && (
               <div className="space-y-3">
-                <div><div className="hud-label mb-0.5">LOCATION</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.location?.display_name}</div></div>
-                {regionDossier.location?.country && <button className="text-xs text-[var(--gold-primary)] underline" onClick={() => exploreEntity({ type: 'country', id: regionDossier.country?.wikidata || regionDossier.location.country, name: regionDossier.location.country, iso3166: regionDossier.location.country_code, provider: 'OSIRIS region dossier' })}>Explore country relationships</button>}
-                {regionDossier.head_of_state?.name && <button className="block text-xs text-[var(--gold-primary)] underline" onClick={() => exploreEntity({ type: 'person', id: regionDossier.head_of_state.wikidata || regionDossier.head_of_state.name, name: regionDossier.head_of_state.name, provider: 'OSIRIS region dossier' })}>Explore person relationships</button>}
+                <div><div className="hud-label mb-0.5">{uiText("LOCATION")}</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.location?.display_name}</div></div>
+                {regionDossier.location?.country && <button className="text-xs text-[var(--gold-primary)] underline" onClick={() => exploreEntity({ type: 'country', id: regionDossier.country?.wikidata || regionDossier.location.country, name: regionDossier.location.country, iso3166: regionDossier.location.country_code, provider: 'OSIRIS region dossier' })}>{uiText("Explore country relationships")}</button>}
+                {regionDossier.head_of_state?.name && <button className="block text-xs text-[var(--gold-primary)] underline" onClick={() => exploreEntity({ type: 'person', id: regionDossier.head_of_state.wikidata || regionDossier.head_of_state.name, name: regionDossier.head_of_state.name, provider: 'OSIRIS region dossier' })}>{uiText("Explore person relationships")}</button>}
                 {regionDossier.country && (
                   <div className="grid grid-cols-2 gap-2">
-                    <div><div className="hud-label mb-0.5">COUNTRY</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.flag} {regionDossier.country.name}</div></div>
-                    <div><div className="hud-label mb-0.5">CAPITAL</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.capital}</div></div>
-                    <div><div className="hud-label mb-0.5">POPULATION</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.population?.toLocaleString()}</div></div>
-                    <div><div className="hud-label mb-0.5">REGION</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.subregion || regionDossier.country.region}</div></div>
-                    <div><div className="hud-label mb-0.5">LANGUAGES</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.languages?.join(', ')}</div></div>
-                    <div><div className="hud-label mb-0.5">AREA</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.area?.toLocaleString()} km²</div></div>
+                    <div><div className="hud-label mb-0.5">{uiText("COUNTRY")}</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.flag} {regionDossier.country.name}</div></div>
+                    <div><div className="hud-label mb-0.5">{uiText("CAPITAL")}</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.capital}</div></div>
+                    <div><div className="hud-label mb-0.5">{uiText("POPULATION")}</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.population?.toLocaleString()}</div></div>
+                    <div><div className="hud-label mb-0.5">{uiText("REGION")}</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.subregion || regionDossier.country.region}</div></div>
+                    <div><div className="hud-label mb-0.5">{uiText("LANGUAGES")}</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.languages?.join(', ')}</div></div>
+                    <div><div className="hud-label mb-0.5">{uiText("AREA")}</div><div className="text-xs text-[var(--text-primary)]">{regionDossier.country.area?.toLocaleString()} km²</div></div>
                   </div>
                 )}
-                {regionDossier.head_of_state && (<div><div className="hud-label mb-0.5">HEAD OF STATE</div><div className="text-xs text-[var(--gold-primary)]">{regionDossier.head_of_state.name}</div><div className="text-[9px] text-[var(--text-muted)]">{regionDossier.head_of_state.position}</div></div>)}
-                {regionDossier.wikipedia && (<div><div className="hud-label mb-1">INTELLIGENCE BRIEF</div><div className="flex gap-3">{regionDossier.wikipedia.thumbnail && <img src={regionDossier.wikipedia.thumbnail} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0" />}<p className="text-[9px] text-[var(--text-secondary)] leading-relaxed">{regionDossier.wikipedia.extract}</p></div></div>)}
+                {regionDossier.head_of_state && (<div><div className="hud-label mb-0.5">{uiText("HEAD OF STATE")}</div><div className="text-xs text-[var(--gold-primary)]">{regionDossier.head_of_state.name}</div><div className="text-[9px] text-[var(--text-muted)]">{regionDossier.head_of_state.position}</div></div>)}
+                {regionDossier.wikipedia && (<div><div className="hud-label mb-1">{uiText("INTELLIGENCE BRIEF")}</div><div className="flex gap-3">{regionDossier.wikipedia.thumbnail && <img src={regionDossier.wikipedia.thumbnail} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0" />}<p className="text-[9px] text-[var(--text-secondary)] leading-relaxed">{regionDossier.wikipedia.extract}</p></div></div>)}
               </div>
             )}
           </div>
@@ -1952,9 +1953,9 @@ function Dashboard() {
         onContext={intent=>{if(investigationContext){setGraphIntent(intent);setGraphSeed(undefined);setGraphObjectId(investigationContext.object.id);setGraphOpen(true);}}} />
       {/* ── Entity Graph Panel ── */}
       <div className="absolute left-4 bottom-24 z-[400] flex flex-col items-start gap-1 font-mono text-[10px]">
-        {healthyOnly && <button onClick={() => setHealthyOnly(false)} className="bg-[var(--bg-primary)] text-cyan-300 p-2">CCTV: Healthy only ({healthyCameraIds.size}) · clear</button>}
+        {healthyOnly && <button onClick={() => setHealthyOnly(false)} className="bg-[var(--bg-primary)] text-cyan-300 p-2">{uiText("CCTV: Healthy only (")}{healthyCameraIds.size}{uiText(") · clear")}</button>}
         {healthFilterError && healthyOnly && <span role="alert" className="max-w-64 bg-[var(--bg-primary)] text-red-300 p-2">{healthFilterError}</span>}
-        {investigation && <div className="max-w-64 bg-[var(--bg-primary)] border border-[var(--gold-primary)]/40 p-2 text-cyan-300"><p>{investigation.label}</p><p className="text-slate-400">{investigation.track ? 'Sampled positions; gaps omitted' : 'Selected related signals'}</p><button className="underline" onClick={() => setInvestigation(null)}>Clear map highlight</button>{graphObjectId && <button className="ml-2 underline" onClick={() => setGraphOpen(true)}>Reopen object</button>}</div>}
+        {investigation && <div className="max-w-64 bg-[var(--bg-primary)] border border-[var(--gold-primary)]/40 p-2 text-cyan-300"><p>{uiText(String(investigation.label))}</p><p className="text-slate-400">{investigation.track ? 'Sampled positions; gaps omitted' : 'Selected related signals'}</p><button className="underline" onClick={() => setInvestigation(null)}>{uiText("Clear map highlight")}</button>{graphObjectId && <button className="ml-2 underline" onClick={() => setGraphOpen(true)}>{uiText("Reopen object")}</button>}</div>}
       </div>
       {graphOpen && <EntityGraphPanel key={`${graphObjectId || graphSeed?.id || "search"}:${graphIntent}`} intent={graphIntent} onContext={setInvestigationContext} seed={graphSeed} objectId={graphObjectId} onMap={showInvestigation} onClose={closeGraph} />}
       {intelPanel === 'health' && <SourceHealthPanel onClose={closeIntelPanel} healthyOnly={healthyOnly} onHealthyOnly={setHealthyOnly} />}
@@ -2015,9 +2016,7 @@ function Dashboard() {
       <GlobalStatusBar />
 
       {/* Shortcut hint — more visible */}
-      <div className="desktop-only absolute bottom-[26px] right-5 z-[200] pointer-events-none text-[9px] font-mono text-[var(--text-muted)] opacity-50 tracking-widest" title="Press ? to see all keyboard shortcuts">
-        Press <span className="text-[var(--gold-primary)] opacity-80">?</span> for shortcuts · <span className="text-[var(--gold-primary)] opacity-80">F</span> fullscreen · <span className="text-[var(--gold-primary)] opacity-80">R</span> reset view
-      </div>
+      <div className="desktop-only absolute bottom-[26px] right-5 z-[200] pointer-events-none text-[9px] font-mono text-[var(--text-muted)] opacity-50 tracking-widest" title={uiText("Press ? to see all keyboard shortcuts")}>{uiText("Press")}{" "}<span className="text-[var(--gold-primary)] opacity-80">?</span>{" "}{uiText("for shortcuts ·")}{" "}<span className="text-[var(--gold-primary)] opacity-80">F</span>{" "}{uiText("fullscreen ·")}{" "}<span className="text-[var(--gold-primary)] opacity-80">R</span>{" "}{uiText("reset view")}{" "}</div>
 
 
     </main>

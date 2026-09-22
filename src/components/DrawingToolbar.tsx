@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -111,6 +112,7 @@ export default function DrawingToolbar({
   data, onLocateEntity, watched, onToggleWatch, watchEvents = [],
   onRenamePolygon,
 }: DrawingToolbarProps) {
+  const {t:uiText}=useUILocale();
   const [editingName, setEditingName] = useState<string | null>(null);
   const [nameValue, setNameValue] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
@@ -171,17 +173,17 @@ export default function DrawingToolbar({
         <div className="px-4 py-3 border-b border-white/[0.06]">
           <div className="flex items-center gap-2 mb-2">
             <Pentagon className="w-3.5 h-3.5 text-[var(--cyan-primary)]" />
-            <span className="text-[12px] font-mono tracking-[0.2em] text-white/90 font-bold">DRAWING TOOLS</span>
+            <span className="text-[12px] font-mono tracking-[0.2em] text-white/90 font-bold">{uiText("DRAWING TOOLS")}</span>
           </div>
           
           <div className="flex items-center justify-between text-[10px] font-mono text-white/50 bg-white/5 rounded px-2 py-1.5 border border-white/[0.04]">
             <div className="flex flex-col">
-              <span className="text-[10px] tracking-wider mb-0.5 uppercase">Tracked Area</span>
+              <span className="text-[10px] tracking-wider mb-0.5 uppercase">{uiText("Tracked Area")}</span>
               <span className="text-[12px] text-[var(--cyan-primary)] font-bold">{totalArea.toFixed(1)} km²</span>
             </div>
             <div className="w-[1px] h-6 bg-white/10" />
             <div className="flex flex-col text-right">
-              <span className="text-[10px] tracking-wider mb-0.5 uppercase">AOIs / Perim</span>
+              <span className="text-[10px] tracking-wider mb-0.5 uppercase">{uiText("AOIs / Perim")}</span>
               <span className="text-[12px] text-white/80">{polygons.length} / {totalPerim.toFixed(1)}km</span>
             </div>
           </div>
@@ -211,7 +213,7 @@ export default function DrawingToolbar({
                   <m.Icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${on ? 'text-[var(--cyan-primary)]' : 'text-white/60'}`} />
                   <span className="min-w-0">
                     <span className={`block text-[11px] font-mono tracking-wider ${on ? 'text-[var(--cyan-primary)]' : 'text-white/80'}`}>
-                      {m.label}
+                      {uiText(String(m.label))}
                     </span>
                     {/* The description was a tooltip, which is invisible to
                         anyone who does not already know to hover. */}
@@ -266,13 +268,9 @@ export default function DrawingToolbar({
                 {/* "No polygons drawn yet" states the obvious and helps nobody.
                     An empty state should say what to do next. */}
                 {drawMode ? (
-                  <p className="text-[11px] font-mono text-[var(--cyan-primary)]/70 tracking-wider leading-relaxed">
-                    Now click on the map to place your first point.
-                  </p>
+                  <p className="text-[11px] font-mono text-[var(--cyan-primary)]/70 tracking-wider leading-relaxed">{uiText("Now click on the map to place your first point.")}{" "}</p>
                 ) : (
-                  <p className="text-[11px] font-mono text-white/35 tracking-wider leading-relaxed">
-                    Choose a shape above, then click the map<br />to measure an area and see what is inside it.
-                  </p>
+                  <p className="text-[11px] font-mono text-white/35 tracking-wider leading-relaxed">{uiText("Choose a shape above, then click the map")}<br />{uiText("to measure an area and see what is inside it.")}{" "}</p>
                 )}
               </motion.div>
             ) : (
@@ -332,10 +330,10 @@ export default function DrawingToolbar({
                           <Radar className={`w-3 h-3 ${watched?.has(polygon.id) ? 'animate-pulse' : ''}`} />
                         </button>
                       )}
-                      <button onClick={(e) => { e.stopPropagation(); handleCopy(polygon); }} className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition" title="Copy GeoJSON">
+                      <button onClick={(e) => { e.stopPropagation(); handleCopy(polygon); }} className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition" title={uiText("Copy GeoJSON")}>
                         {copied === polygon.id ? <Check className="w-3 h-3 text-[var(--alert-green)]" /> : <Copy className="w-3 h-3" />}
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); onDeletePolygon(polygon.id); }} className="p-1.5 rounded bg-[#FF3D57]/10 hover:bg-[#FF3D57]/20 text-[#FF3D57]/60 hover:text-[#FF3D57] transition" title="Delete">
+                      <button onClick={(e) => { e.stopPropagation(); onDeletePolygon(polygon.id); }} className="p-1.5 rounded bg-[#FF3D57]/10 hover:bg-[#FF3D57]/20 text-[#FF3D57]/60 hover:text-[#FF3D57] transition" title={uiText("Delete")}>
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -363,12 +361,12 @@ export default function DrawingToolbar({
                     return (
                       <div className="mt-2 pt-2 border-t border-white/[0.06]">
                         <div className="flex items-baseline gap-2 mb-1.5">
-                          <span className="text-[10px] font-mono tracking-[0.2em] text-white/40">CONTENTS</span>
+                          <span className="text-[10px] font-mono tracking-[0.2em] text-white/40">{uiText("CONTENTS")}</span>
                           <span className="text-[11px] font-mono text-white tabular-nums">{report.total.toLocaleString()}</span>
-                          <span className="text-[10px] font-mono text-white/30">object{report.total === 1 ? "" : "s"}</span>
+                          <span className="text-[10px] font-mono text-white/30">{uiText("object")}{report.total === 1 ? "" : "s"}</span>
                         </div>
                         {report.total === 0 && (
-                          <p className="text-[10px] font-mono text-white/30 pb-1">Nothing tracked inside this area.</p>
+                          <p className="text-[10px] font-mono text-white/30 pb-1">{uiText("Nothing tracked inside this area.")}</p>
                         )}
                         {report.groups.map(g => (
                           <div key={g.key} className="mb-1.5">
@@ -377,7 +375,7 @@ export default function DrawingToolbar({
                               className="w-full flex items-center gap-2 py-0.5 hover:bg-white/[0.03] rounded"
                             >
                               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: g.color }} />
-                              <span className="text-[10px] font-mono text-white/70 flex-1 text-left">{g.label}</span>
+                              <span className="text-[10px] font-mono text-white/70 flex-1 text-left">{uiText(String(g.label))}</span>
                               <span className="text-[10px] font-mono text-white tabular-nums">{g.count.toLocaleString()}</span>
                             </button>
                             {openGroup === polygon.id + g.key && (
@@ -388,14 +386,13 @@ export default function DrawingToolbar({
                                     onClick={(e) => { e.stopPropagation(); onLocateEntity?.(it.lat, it.lng); }}
                                     className="w-full flex items-baseline gap-2 py-0.5 text-left hover:bg-white/[0.04] rounded px-1"
                                   >
-                                    <span className="text-[10px] font-mono text-white/80 truncate">{it.label}</span>
+                                    <span className="text-[10px] font-mono text-white/80 truncate">{uiText(String(it.label))}</span>
                                     {it.detail && <span className="text-[10px] font-mono text-white/30 truncate">{it.detail}</span>}
                                   </button>
                                 ))}
                                 {g.count > MAX_ITEMS_PER_GROUP && (
                                   <p className="text-[10px] font-mono text-white/25 px-1 py-0.5">
-                                    +{(g.count - MAX_ITEMS_PER_GROUP).toLocaleString()} more not listed
-                                  </p>
+                                    +{(g.count - MAX_ITEMS_PER_GROUP).toLocaleString()}{" "}{uiText("more not listed")}{" "}</p>
                                 )}
                               </div>
                             )}
@@ -444,22 +441,19 @@ export default function DrawingToolbar({
           <div className="border-t border-white/[0.04] bg-black/50">
             <div className="flex items-center gap-2 px-3 py-1.5">
               <Radar className="w-3 h-3 text-[var(--alert-green)] animate-pulse" />
-              <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--alert-green)] flex-1">
-                WATCHING {watched.size}
+              <span className="text-[10px] font-mono tracking-[0.2em] text-[var(--alert-green)] flex-1">{uiText("WATCHING")}{" "}{watched.size}
               </span>
-              <span className="text-[10px] font-mono text-white/30 tabular-nums">{watchEvents.length} events</span>
+              <span className="text-[10px] font-mono text-white/30 tabular-nums">{watchEvents.length}{" "}{uiText("events")}</span>
             </div>
             <div className="max-h-[120px] overflow-y-auto styled-scrollbar">
               {watchEvents.length === 0 ? (
-                <p className="px-3 pb-2 text-[10px] font-mono text-white/30">
-                  Baseline recorded. Movement in or out will appear here.
-                </p>
+                <p className="px-3 pb-2 text-[10px] font-mono text-white/30">{uiText("Baseline recorded. Movement in or out will appear here.")}{" "}</p>
               ) : watchEvents.map(ev => (
                 <div key={ev.id} className="flex items-center gap-2 px-3 py-1 hover:bg-white/[0.03]">
                   {ev.kind === 'enter'
                     ? <LogIn className="w-2.5 h-2.5 text-[var(--alert-green)] flex-shrink-0" />
                     : <LogOut className="w-2.5 h-2.5 text-[#FF3D57] flex-shrink-0" />}
-                  <span className="text-[10px] font-mono text-white/80 truncate flex-1">{ev.label}</span>
+                  <span className="text-[10px] font-mono text-white/80 truncate flex-1">{uiText(String(ev.label))}</span>
                   <span className="text-[10px] font-mono truncate" style={{ color: ev.color }}>{ev.layerLabel}</span>
                   <span className="text-[10px] font-mono text-white/30 tabular-nums flex-shrink-0">{watchAgo(ev.at)}</span>
                 </div>
@@ -475,16 +469,12 @@ export default function DrawingToolbar({
               onClick={onExportGeoJSON} 
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded text-[10px] font-mono tracking-[0.2em] bg-[var(--cyan-primary)]/10 border border-[var(--cyan-primary)]/30 text-[var(--cyan-primary)]/80 hover:text-[var(--cyan-primary)] hover:bg-[var(--cyan-primary)]/20 hover:border-[var(--cyan-primary)]/50 transition"
             >
-              <Download className="w-3 h-3" />
-              EXPORT GEOJSON
-            </button>
+              <Download className="w-3 h-3" />{uiText("EXPORT GEOJSON")}{" "}</button>
             <button 
               onClick={onClearAll} 
               className="flex items-center justify-center gap-1.5 px-3 py-2 rounded text-[10px] font-mono tracking-widest bg-[#FF3D57]/10 border border-[#FF3D57]/20 text-[#FF3D57]/60 hover:text-[#FF3D57] hover:bg-[#FF3D57]/20 transition"
             >
-              <Trash2 className="w-3 h-3" />
-              CLEAR
-            </button>
+              <Trash2 className="w-3 h-3" />{uiText("CLEAR")}{" "}</button>
           </div>
         )}
       </div>

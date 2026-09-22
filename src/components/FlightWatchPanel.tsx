@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useEffect, useState } from 'react';
 import { X, Plane, Gauge, ArrowUp, Radio, Crosshair, Loader2 } from 'lucide-react';
@@ -152,6 +153,7 @@ function Row({ flight, telem, onRemove, onLocate, onDetail }: {
   onLocate: (lat: number, lng: number) => void;
   onDetail: (icao24: string, d: AircraftDetail | null) => void;
 }) {
+ const {t:uiText}=useUILocale();
   const [detail, setDetail] = useState<AircraftDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -196,7 +198,7 @@ function Row({ flight, telem, onRemove, onLocate, onDetail }: {
         {telem && (
           <button
             onClick={() => onLocate(telem.lat, telem.lng)}
-            title="Centre on this aircraft"
+            title={uiText("Centre on this aircraft")}
             className="p-0.5 text-[var(--text-muted)] hover:text-[var(--cyan-primary)] transition-colors"
           >
             <Crosshair className="w-3 h-3" />
@@ -204,7 +206,7 @@ function Row({ flight, telem, onRemove, onLocate, onDetail }: {
         )}
         <button
           onClick={() => onRemove(flight.icao24)}
-          title="Stop watching"
+          title={uiText("Stop watching")}
           aria-label={`Stop watching ${flight.callsign || flight.icao24}`}
           className="p-0.5 text-[var(--text-muted)] hover:text-[var(--alert-red)] transition-colors"
         >
@@ -215,8 +217,7 @@ function Row({ flight, telem, onRemove, onLocate, onDetail }: {
       <div className="px-2.5 py-2">
         {loading ? (
           <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
-            <Loader2 className="w-3 h-3 animate-spin" /> Identifying airframe…
-          </div>
+            <Loader2 className="w-3 h-3 animate-spin" />{" "}{uiText("Identifying airframe…")}{" "}</div>
         ) : (
           <>
             <div className="text-[11px] text-[var(--text-primary)] leading-snug">
@@ -270,13 +271,10 @@ function Row({ flight, telem, onRemove, onLocate, onDetail }: {
 
         {detail && detail.points > 0 && (
           <div className="mt-1.5 text-[9px] text-[var(--text-muted)] tabular-nums">
-            {detail.points} points this leg
-          </div>
+            {detail.points}{" "}{uiText("points this leg")}{" "}</div>
         )}
         {!telem && (
-          <div className="mt-1.5 text-[9px] text-[var(--alert-orange)]">
-            No longer in the live feed
-          </div>
+          <div className="mt-1.5 text-[9px] text-[var(--alert-orange)]">{uiText("No longer in the live feed")}{" "}</div>
         )}
       </div>
     </div>

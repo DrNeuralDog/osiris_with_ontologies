@@ -35,6 +35,7 @@ function createApp(store, service = new OntologyService(store)) {
   });
   app.use('/ontology', ontologyRoutes(store, service));
   app.use('/intelligence',intelligenceRoutes(store));
+  app.use('/investigations',require('./investigations/routes').investigationRoutes(store));
   app.get('/resolve', async (req, res) => {
     const type = typeof req.query.type === 'string' ? req.query.type.toLowerCase().trim() : '';
     if (!Object.hasOwn(legacy.RESOLVERS, type)) throw new InputError('Invalid type');

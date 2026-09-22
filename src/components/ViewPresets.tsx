@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { motion } from 'framer-motion';
 import { Globe, MapPin } from 'lucide-react';
@@ -23,6 +24,7 @@ const PRESETS = [
 ];
 
 export default function ViewPresets({ onNavigate }: ViewPresetsProps) {
+  const {t:uiText}=useUILocale();
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -32,10 +34,9 @@ export default function ViewPresets({ onNavigate }: ViewPresetsProps) {
     >
       <div className="flex items-center gap-2 mb-2">
         <Globe className="w-3.5 h-3.5 text-[var(--gold-primary)]" />
-        <span className="hud-text text-[11px] text-[var(--text-primary)] tracking-widest">REGION PRESETS</span>
+        <span className="hud-text text-[11px] text-[var(--text-primary)] tracking-widest">{uiText("REGION PRESETS")}</span>
         <span className="gotham-tag gotham-tag--critical" style={{ fontSize: '9px', padding: '1px 4px', marginLeft: 'auto' }}>
-          {PRESETS.filter(p => (p as any).hot).length} HOT
-        </span>
+          {PRESETS.filter(p => (p as any).hot).length}{" "}{uiText("HOT")}{" "}</span>
       </div>
       <div className="grid grid-cols-2 gap-1">
         {PRESETS.map(p => (
@@ -45,7 +46,7 @@ export default function ViewPresets({ onNavigate }: ViewPresetsProps) {
             className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-[11px] font-mono tracking-wider border border-transparent hover:border-[var(--border-primary)] hover:text-[var(--gold-primary)] transition-all hover:scale-[1.02] active:scale-[0.98] ${(p as any).hot ? 'text-[var(--alert-red)] hover:border-[var(--alert-red)]/30 hover:bg-[var(--alert-red)]/5' : 'text-[var(--text-muted)] hover:bg-[var(--hover-accent)]'}`}
           >
             <span className="text-[10px] flex-shrink-0">{p.icon}</span>
-            <span>{p.label}</span>
+            <span>{uiText(String(p.label))}</span>
             {(p as any).hot && <span className="w-1.5 h-1.5 rounded-full bg-[var(--alert-red)] animate-osiris-pulse ml-auto flex-shrink-0" />}
           </button>
         ))}

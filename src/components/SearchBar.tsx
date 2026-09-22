@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, X, MapPin, Navigation, Building2, Globe2, Landmark } from 'lucide-react';
@@ -65,6 +66,7 @@ function formatLabel(displayName: string): { primary: string; secondary: string 
 }
 
 export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBarProps) {
+  const {t:uiText}=useUILocale();
   const [open, setOpen] = useState(alwaysExpanded);
   const [value, setValue] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -208,9 +210,7 @@ export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBa
         onClick={() => setOpen(true)}
         className="flex items-center gap-1.5 glass-panel-sm px-3 py-2 text-[10px] font-mono tracking-[0.15em] text-[var(--text-muted)] hover:text-[var(--gold-primary)] hover:border-[var(--border-active)] transition-all hover:shadow-[0_0_12px_rgba(212,175,55,0.08)]"
       >
-        <Search className="w-3 h-3" />
-        CMD: LOCATE
-      </button>
+        <Search className="w-3 h-3" />{uiText("CMD: LOCATE")}{" "}</button>
     );
   }
 
@@ -225,7 +225,7 @@ export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBa
           value={value}
           onChange={(e) => handleSearch(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="SEARCH ADDRESS, CITY, OR COORDINATES..."
+          placeholder={uiText("SEARCH ADDRESS, CITY, OR COORDINATES...")}
           className="flex-1 bg-transparent text-[11px] text-[var(--text-primary)] font-mono tracking-wider outline-none placeholder:text-[var(--text-muted)]"
           autoComplete="off"
           spellCheck={false}
@@ -268,7 +268,7 @@ export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBa
                 </div>
                 <div className="flex flex-col items-end flex-shrink-0">
                   <span className="text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-wider">
-                    {r.type === 'coordinate' ? 'COORDS' : r.type}
+                    {r.type === 'coordinate' ? uiText("COORDS") : r.type}
                   </span>
                   <span className="text-[9px] text-[var(--gold-primary)] font-mono opacity-40">
                     Z{r.zoomLevel}
@@ -278,16 +278,13 @@ export default function SearchBar({ onLocate, alwaysExpanded = false }: SearchBa
             );
           })}
           {/* Results come from OpenStreetMap, through Photon and Nominatim. */}
-          <div className="px-3 py-1.5 border-t border-[var(--border-secondary)] text-[8.5px] font-mono tracking-wider text-[var(--text-muted)]">
-            PLACES ©{' '}
+          <div className="px-3 py-1.5 border-t border-[var(--border-secondary)] text-[8.5px] font-mono tracking-wider text-[var(--text-muted)]">{uiText("PLACES ©")}{' '}
             <a
               href="https://www.openstreetmap.org/copyright"
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-[var(--gold-primary)]"
-            >
-              OPENSTREETMAP CONTRIBUTORS
-            </a>
+            >{uiText("OPENSTREETMAP CONTRIBUTORS")}{" "}</a>
           </div>
         </div>
       )}

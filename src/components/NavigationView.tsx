@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
@@ -65,6 +66,7 @@ export function navDuration(s: number): string {
 export default function NavigationView({
   route, destinationLabel, fix, onExit, onReroute, onProgress, following, onRecenter,
 }: NavigationViewProps) {
+ const {t:uiText}=useUILocale();
   const [muted, setMuted] = useState(false);
   const [rerouting, setRerouting] = useState(false);
   // Coarse clock for the arrival time — reading Date.now() during render is
@@ -193,8 +195,8 @@ export default function NavigationView({
             {onRecenter && !following && (
               <button
                 onClick={onRecenter}
-                title="Recenter on me and resume follow"
-                aria-label="Recenter on me and resume follow"
+                title={uiText("Recenter on me and resume follow")}
+                aria-label={uiText("Recenter on me and resume follow")}
                 className="p-1.5 rounded-md text-[#4285F4] bg-[rgba(66,133,244,0.14)] hover:bg-[rgba(66,133,244,0.24)] transition-colors animate-pulse"
               >
                 <LocateFixed className="w-4 h-4" />
@@ -210,8 +212,8 @@ export default function NavigationView({
             </button>
             <button
               onClick={onExit}
-              title="End navigation"
-              aria-label="End navigation"
+              title={uiText("End navigation")}
+              aria-label={uiText("End navigation")}
               className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--alert-red)] transition-colors"
             >
               <X className="w-4 h-4" />
@@ -231,15 +233,12 @@ export default function NavigationView({
         <div className="px-4 py-2.5 flex items-center justify-between gap-3">
           {rerouting ? (
             <span className="flex items-center gap-2 text-[11px] text-[var(--alert-orange)]">
-              <Loader2 className="w-3 h-3 animate-spin" /> Recalculating route…
-            </span>
+              <Loader2 className="w-3 h-3 animate-spin" />{" "}{uiText("Recalculating route…")}{" "}</span>
           ) : progress?.offRoute ? (
             <span className="flex items-center gap-2 text-[11px] text-[var(--alert-orange)]">
-              <AlertTriangle className="w-3 h-3" /> Off route
-            </span>
+              <AlertTriangle className="w-3 h-3" />{" "}{uiText("Off route")}{" "}</span>
           ) : (
-            <span className="text-[11px] text-[var(--text-muted)] truncate">
-              to {destinationLabel}
+            <span className="text-[11px] text-[var(--text-muted)] truncate">{uiText("to")}{" "}{destinationLabel}
             </span>
           )}
 
@@ -259,7 +258,7 @@ export default function NavigationView({
       {/* ── the turn after this one ── */}
       {progress && !arrived && route.steps[progress.stepIndex + 1] && (
         <div className="glass-panel px-4 py-2 flex items-center gap-3">
-          <span className="text-[9px] uppercase tracking-[0.15em] text-[var(--text-muted)] flex-shrink-0">Then</span>
+          <span className="text-[9px] uppercase tracking-[0.15em] text-[var(--text-muted)] flex-shrink-0">{uiText("Then")}</span>
           <ManeuverIcon type={route.steps[progress.stepIndex + 1].type} className="w-4 h-4" />
           <span className="text-[11px] text-[var(--text-secondary)] truncate">
             {route.steps[progress.stepIndex + 1].instruction}
@@ -268,9 +267,7 @@ export default function NavigationView({
       )}
 
       {!fix && (
-        <div className="glass-panel px-4 py-2 text-[11px] text-[var(--alert-orange)]">
-          Waiting for a position fix… navigation needs HTTPS or localhost.
-        </div>
+        <div className="glass-panel px-4 py-2 text-[11px] text-[var(--alert-orange)]">{uiText("Waiting for a position fix… navigation needs HTTPS or localhost.")}{" "}</div>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { Check, X, Undo2, MousePointerClick } from 'lucide-react';
 import type { DrawMode, DrawProgress } from '@/lib/draw';
@@ -56,6 +57,7 @@ function step(mode: DrawMode, vertices: number): string {
 }
 
 export default function DrawHud({ mode, progress, onUndo, onFinish, onCancel }: DrawHudProps) {
+  const {t:uiText}=useUILocale();
   const vertices = progress?.vertices ?? 0;
   const canFinish = progress?.closable ?? false;
   // Two-click shapes complete themselves, so offering Finish would be a button
@@ -98,8 +100,7 @@ export default function DrawHud({ mode, progress, onUndo, onFinish, onCancel }: 
             disabled={vertices === 0}
             className="flex items-center gap-1.5 rounded-md border border-[var(--border-secondary)] px-2.5 py-1.5 text-[11px] font-mono text-[var(--text-secondary)] transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30"
           >
-            <Undo2 className="h-3 w-3" /> Undo point
-          </button>
+            <Undo2 className="h-3 w-3" />{" "}{uiText("Undo point")}{" "}</button>
 
           {!selfCompleting && (
             <button
@@ -111,8 +112,7 @@ export default function DrawHud({ mode, progress, onUndo, onFinish, onCancel }: 
                   : 'border-[var(--border-secondary)] text-[var(--text-muted)] opacity-40'
               }`}
             >
-              <Check className="h-3 w-3" />
-              Finish {mode === 'line' ? 'path' : 'area'}
+              <Check className="h-3 w-3" />{uiText("Finish")}{" "}{mode === 'line' ? 'path' : 'area'}
             </button>
           )}
 
@@ -120,11 +120,10 @@ export default function DrawHud({ mode, progress, onUndo, onFinish, onCancel }: 
             onClick={onCancel}
             className="flex items-center gap-1.5 rounded-md border border-[var(--border-secondary)] px-2.5 py-1.5 text-[11px] font-mono text-[var(--text-secondary)] transition-colors hover:border-[var(--alert-red)]/40 hover:text-[var(--alert-red)]"
           >
-            <X className="h-3 w-3" /> Cancel
-          </button>
+            <X className="h-3 w-3" />{" "}{uiText("Cancel")}{" "}</button>
 
           <span className="ml-auto pl-2 text-[10px] font-mono text-[var(--text-muted)]">
-            {vertices} point{vertices === 1 ? '' : 's'}
+            {vertices}{" "}{uiText("point")}{vertices === 1 ? '' : 's'}
             {!selfCompleting && ' · or double-click the map to finish'}
           </span>
         </div>

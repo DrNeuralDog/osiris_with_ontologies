@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,6 +18,7 @@ interface CameraViewerProps {
 }
 
 export default function CameraViewer({ camera, onClose, onLocate, onInvestigate }: CameraViewerProps) {
+  const {t:uiText}=useUILocale();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -201,7 +203,7 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
                 </div>
                 <div className="flex items-center gap-3">
                   <span>{currentTime}</span>
-                  <span className="text-[var(--gold-primary)]">SECURE UPLINK</span>
+                  <span className="text-[var(--gold-primary)]">{uiText("SECURE UPLINK")}</span>
                 </div>
               </div>
 
@@ -215,7 +217,7 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[11px] md:text-[12px] font-mono font-bold tracking-widest truncate text-white uppercase" style={{ textShadow: '0 0 10px rgba(255,255,255,0.3)' }}>{camera.name}</h3>
-                    <p className="text-[9px] md:text-[9px] font-mono text-[var(--gold-primary)] uppercase tracking-wider opacity-80">{camera.city}, {camera.country} • SOURCE: {camera.source}</p>
+                    <p className="text-[9px] md:text-[9px] font-mono text-[var(--gold-primary)] uppercase tracking-wider opacity-80">{camera.city}, {camera.country}{" "}{uiText("• SOURCE:")}{" "}{camera.source}</p>
                   </div>
                 </div>
                 
@@ -230,17 +232,17 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
                           setImageUrl(url);
                         }
                       }} 
-                      className="p-1.5 rounded-sm bg-white/5 border border-white/10 hover:bg-[var(--gold-primary)]/20 hover:border-[var(--gold-primary)] transition-all" title="Refresh feed"
+                      className="p-1.5 rounded-sm bg-white/5 border border-white/10 hover:bg-[var(--gold-primary)]/20 hover:border-[var(--gold-primary)] transition-all" title={uiText("Refresh feed")}
                     >
                       <RefreshCw className="w-3 h-3 text-[var(--text-secondary)] hover:text-[var(--gold-primary)]" />
                     </button>
                   )}
                   {camera.lat && camera.lng && (
-                    <button onClick={() => onLocate?.(camera.lat, camera.lng)} className="p-1.5 rounded-sm bg-white/5 border border-white/10 hover:bg-[var(--gold-primary)]/20 hover:border-[var(--gold-primary)] transition-all" title="Fly to location">
+                    <button onClick={() => onLocate?.(camera.lat, camera.lng)} className="p-1.5 rounded-sm bg-white/5 border border-white/10 hover:bg-[var(--gold-primary)]/20 hover:border-[var(--gold-primary)] transition-all" title={uiText("Fly to location")}>
                       <MapPin className="w-3 h-3 text-[var(--text-secondary)] hover:text-[var(--gold-primary)]" />
                     </button>
                   )}
-                  <button onClick={() => setFullscreen(!fullscreen)} className="hidden md:block p-1.5 rounded-sm bg-white/5 border border-white/10 hover:bg-[var(--text-primary)]/20 hover:border-[var(--text-primary)] transition-all" title="Toggle fullscreen">
+                  <button onClick={() => setFullscreen(!fullscreen)} className="hidden md:block p-1.5 rounded-sm bg-white/5 border border-white/10 hover:bg-[var(--text-primary)]/20 hover:border-[var(--text-primary)] transition-all" title={uiText("Toggle fullscreen")}>
                     <Maximize2 className="w-3 h-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" />
                   </button>
                   <button onClick={onClose} className="p-1.5 rounded-sm bg-red-900/30 border border-red-500/30 hover:bg-red-500/30 hover:border-red-500 transition-all ml-2">
@@ -251,7 +253,7 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
             </div>
 
           {onInvestigate&&<InvestigationActions entity={{...camera,type:'camera'}} onInvestigate={onInvestigate}/>}
-          <div className="px-3 py-2 flex flex-wrap items-center gap-2 text-[10px] font-mono border-b border-white/10"><button className="px-2 py-1 border border-[var(--gold-primary)]/40 rounded text-[var(--gold-primary)] disabled:opacity-40" onClick={() => void checkHealth()} disabled={!camera.id || healthCheck?.id === String(camera.id) && healthCheck.pending}>Check source health</button><span role="status" className="text-[var(--text-secondary)]">{healthCheck?.id === String(camera.id) ? healthCheck.text : 'Individual camera health: unknown until checked'}</span></div>
+          <div className="px-3 py-2 flex flex-wrap items-center gap-2 text-[10px] font-mono border-b border-white/10"><button className="px-2 py-1 border border-[var(--gold-primary)]/40 rounded text-[var(--gold-primary)] disabled:opacity-40" onClick={() => void checkHealth()} disabled={!camera.id || healthCheck?.id === String(camera.id) && healthCheck.pending}>{uiText("Check source health")}</button><span role="status" className="text-[var(--text-secondary)]">{healthCheck?.id === String(camera.id) ? healthCheck.text : 'Individual camera health: unknown until checked'}</span></div>
           {/* Camera Feed */}
           <div className={`relative bg-[#020202] ${fullscreen ? 'flex-1 overflow-hidden' : 'aspect-video max-h-[35vh] md:max-h-none'}`}>
             {/* Tactical CRT Overlay */}
@@ -265,7 +267,7 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
               <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-30 backdrop-blur-sm">
                 <div className="text-center">
                   <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-3" style={{ borderColor: 'var(--gold-dim)', borderTopColor: 'transparent' }} />
-                  <span className="text-[10px] font-mono tracking-[0.25em]" style={{ color: 'var(--gold-primary)' }}>DECRYPTING FEED...</span>
+                  <span className="text-[10px] font-mono tracking-[0.25em]" style={{ color: 'var(--gold-primary)' }}>{uiText("DECRYPTING FEED...")}</span>
                 </div>
               </div>
             )}
@@ -273,8 +275,8 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
             {view === 'resolving' ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-30 backdrop-blur-sm p-4 text-center">
                 <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-3" style={{ borderColor: 'var(--gold-dim)', borderTopColor: 'transparent' }} />
-                <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: 'var(--gold-primary)' }}>ACQUIRING UPLINK</p>
-                <p className="text-[9px] font-mono text-[var(--text-muted)] mt-2 uppercase">Locating a direct feed</p>
+                <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: 'var(--gold-primary)' }}>{uiText("ACQUIRING UPLINK")}</p>
+                <p className="text-[9px] font-mono text-[var(--text-muted)] mt-2 uppercase">{uiText("Locating a direct feed")}</p>
               </div>
             ) : view === 'offline' ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-30 backdrop-blur-sm p-4 text-center">
@@ -287,27 +289,23 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
             ) : view === 'external' ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-30 backdrop-blur-sm p-4 text-center">
                 <ExternalLink className="w-6 h-6 mb-3 opacity-50" style={{ color: 'var(--gold-primary)' }} />
-                <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: 'var(--gold-primary)' }}>SECURE FEED ENCRYPTED</p>
-                <p className="text-[9px] font-mono text-[var(--text-muted)] mt-2 max-w-[80%] uppercase">This feed requires external clearance</p>
+                <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: 'var(--gold-primary)' }}>{uiText("SECURE FEED ENCRYPTED")}</p>
+                <p className="text-[9px] font-mono text-[var(--text-muted)] mt-2 max-w-[80%] uppercase">{uiText("This feed requires external clearance")}</p>
                 <a 
                   href={externalFeedUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="mt-4 px-4 py-2 rounded text-[10px] font-mono font-bold tracking-widest transition-all hover:bg-white/10"
                   style={{ border: '1px solid var(--border-primary)', color: 'var(--gold-primary)' }}
-                >
-                  ACCESS TERMINAL
-                </a>
+                >{uiText("ACCESS TERMINAL")}{" "}</a>
               </div>
             ) : error ? (
               <div className="absolute inset-0 flex items-center justify-center bg-black/90">
                 <div className="text-center">
                   <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center mb-2 mx-auto"><Camera className="w-4 h-4 text-red-400" /></div>
-                  <span className="text-[10px] font-mono text-red-400 tracking-widest block mb-1">FEED UNAVAILABLE</span>
-                  <span className="text-[9px] font-mono text-[var(--text-muted)]">Camera may be offline or restricted</span>
-                  <button onClick={() => { setError(false); setRetryCount(c => c + 1); }} className="block mx-auto mt-3 px-3 py-1 text-[9px] font-mono text-[#7E57C2] border border-[#7E57C2]/30 rounded hover:bg-[#7E57C2]/10 transition-colors tracking-wider">
-                    RETRY
-                  </button>
+                  <span className="text-[10px] font-mono text-red-400 tracking-widest block mb-1">{uiText("FEED UNAVAILABLE")}</span>
+                  <span className="text-[9px] font-mono text-[var(--text-muted)]">{uiText("Camera may be offline or restricted")}</span>
+                  <button onClick={() => { setError(false); setRetryCount(c => c + 1); }} className="block mx-auto mt-3 px-3 py-1 text-[9px] font-mono text-[#7E57C2] border border-[#7E57C2]/30 rounded hover:bg-[#7E57C2]/10 transition-colors tracking-wider">{uiText("RETRY")}{" "}</button>
                 </div>
               </div>
             ) : streamType === 'hls' ? (
@@ -357,7 +355,7 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
               <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/80 border border-[var(--gold-primary)]/50 px-2 py-1 shadow-[0_0_10px_rgba(0,0,0,0.8)]">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" />
                 <span className="text-[9px] font-mono text-white tracking-[0.2em]">
-                  {watchLiveUrl ? 'SNAPSHOT' : streamType === 'jpg' ? 'LIVE SAT-LINK' : 'LIVE FEED'}
+                  {watchLiveUrl ? uiText("SNAPSHOT") : streamType === 'jpg' ? 'LIVE SAT-LINK' : 'LIVE FEED'}
                 </span>
               </div>
             )}
@@ -370,10 +368,9 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
                 rel="noopener noreferrer"
                 className="absolute bottom-3 right-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-sm border text-[10px] font-mono font-bold tracking-widest transition-all hover:bg-[var(--gold-primary)]/25"
                 style={{ borderColor: 'var(--gold-primary)', color: 'var(--gold-primary)', background: 'rgba(0,0,0,0.75)' }}
-                title="Live video is hosted by the camera operator — opens their page"
+                title={uiText("Live video is hosted by the camera operator — opens their page")}
               >
-                <PlayCircle className="w-3 h-3" /> WATCH LIVE
-              </a>
+                <PlayCircle className="w-3 h-3" />{" "}{uiText("WATCH LIVE")}{" "}</a>
             )}
 
             {/* Tactical Crosshairs */}
@@ -390,13 +387,13 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
             <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
               <div className="flex gap-4">
                 <div className="flex flex-col">
-                  <span className="text-[9px] text-[var(--text-muted)] font-mono tracking-widest">FEED TYPE</span>
+                  <span className="text-[9px] text-[var(--text-muted)] font-mono tracking-widest">{uiText("FEED TYPE")}</span>
                   <span className="text-[9px] text-white font-mono tracking-widest uppercase">
-                    {view === 'offline' ? (gone ? 'WITHDRAWN' : 'OFFLINE') : watchLiveUrl ? 'SNAPSHOT' : externalOnly ? 'EXTERNAL' : resolvedEmbed ? 'YOUTUBE LIVE' : streamType}
+                    {view === 'offline' ? (gone ? 'WITHDRAWN' : 'OFFLINE') : watchLiveUrl ? uiText("SNAPSHOT") : externalOnly ? 'EXTERNAL' : resolvedEmbed ? 'YOUTUBE LIVE' : streamType}
                   </span>
                 </div>
                 <div className="flex flex-col border-l border-white/10 pl-4">
-                  <span className="text-[9px] text-[var(--text-muted)] font-mono tracking-widest">STATUS</span>
+                  <span className="text-[9px] text-[var(--text-muted)] font-mono tracking-widest">{uiText("STATUS")}</span>
                   {/* Nothing is being received locally for an external feed — don't claim otherwise. */}
                   <span className={`text-[9px] font-mono tracking-widest ${externalOnly ? 'text-[var(--gold-primary)]' : 'text-[var(--alert-green)]'}`}>
                     {view === 'offline' ? (gone ? 'REMOVED BY SOURCE' : 'OFF AIR AT SOURCE') : watchLiveUrl ? 'LIVE VIDEO AT SOURCE' : externalOnly ? 'HOSTED OFF-PLATFORM' : 'ACTIVE / RECORDING'}
@@ -409,13 +406,11 @@ export default function CameraViewer({ camera, onClose, onLocate, onInvestigate 
                 {!gone && (camera.feed_url || camera.external_url || (streamType === 'iframe' && camera.stream_url)) && (
                   <a href={camera.external_url || camera.feed_url || (streamType === 'iframe' ? camera.stream_url : undefined)} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-[9px] font-mono text-[var(--gold-primary)] tracking-widest">
-                    <ExternalLink className="w-2.5 h-2.5" /> RAW FEED
-                  </a>
+                    <ExternalLink className="w-2.5 h-2.5" />{" "}{uiText("RAW FEED")}{" "}</a>
                 )}
                 <a href={`https://www.google.com/maps/@${camera.lat},${camera.lng},17z`} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-[9px] font-mono text-[var(--cyan-primary)] tracking-widest">
-                  <MapPin className="w-2.5 h-2.5" /> MAP TARGET
-                </a>
+                  <MapPin className="w-2.5 h-2.5" />{" "}{uiText("MAP TARGET")}{" "}</a>
               </div>
             </div>
             {/* Animated data stream bar */}

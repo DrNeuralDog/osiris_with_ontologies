@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -43,6 +44,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function IntelFeed({ data, onLocate }: IntelFeedProps) {
+  const {t:uiText}=useUILocale();
   const [expanded, setExpanded] = useState(true);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const news = data.news || [];
@@ -61,10 +63,10 @@ export default function IntelFeed({ data, onLocate }: IntelFeedProps) {
       >
         <div className="flex items-center gap-2">
           <Newspaper className="w-3.5 h-3.5 text-[var(--gold-primary)]" />
-          <span className="hud-text text-[11px] text-[var(--text-primary)]">SIGINT FEED</span>
+          <span className="hud-text text-[11px] text-[var(--text-primary)]">{uiText("SIGINT FEED")}</span>
           <span className="gotham-tag gotham-tag--info" style={{ fontSize: '9px', padding: '1px 5px' }}>{news.length}</span>
           {news.some((n: any) => n.risk_score >= 8) && (
-            <span className="gotham-tag gotham-tag--critical" style={{ fontSize: '9px', padding: '1px 4px' }}>ALERTS</span>
+            <span className="gotham-tag gotham-tag--critical" style={{ fontSize: '9px', padding: '1px 4px' }}>{uiText("ALERTS")}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -85,9 +87,7 @@ export default function IntelFeed({ data, onLocate }: IntelFeedProps) {
             <div className="max-h-[400px] overflow-y-auto styled-scrollbar divide-y divide-[var(--border-secondary)]">
               {news.length === 0 ? (
                 <div className="px-4 py-6 text-center">
-                  <span className="text-[10px] font-mono text-[var(--text-muted)] tracking-widest">
-                    AWAITING INTELLIGENCE...
-                  </span>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)] tracking-widest">{uiText("AWAITING INTELLIGENCE...")}{" "}</span>
                 </div>
               ) : (
                 news.slice(0, 25).map((item: any, i: number) => (
@@ -157,9 +157,7 @@ export default function IntelFeed({ data, onLocate }: IntelFeedProps) {
                             className="flex items-center gap-1 text-[11px] font-mono text-[var(--cyan-primary)] hover:underline"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <ExternalLink className="w-2.5 h-2.5" />
-                            OPEN SOURCE
-                          </a>
+                            <ExternalLink className="w-2.5 h-2.5" />{uiText("OPEN SOURCE")}{" "}</a>
                         </motion.div>
                       )}
                     </AnimatePresence>

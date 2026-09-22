@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
@@ -258,6 +259,7 @@ function PlaceInput({
   /** When a live fix exists, both fields offer it as the first choice. */
   liveFix?: { lat: number; lng: number } | null;
 }) {
+  const {t:uiText}=useUILocale();
   const [results, setResults] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -362,8 +364,8 @@ function PlaceInput({
           type="button"
           onClick={onLocate}
           disabled={locating}
-          title="Use my location"
-          aria-label="Use my location"
+          title={uiText("Use my location")}
+          aria-label={uiText("Use my location")}
           className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 rounded text-[var(--text-muted)]
                      hover:text-[var(--alert-green)] hover:bg-[rgba(0,230,118,0.08)] transition-colors disabled:opacity-50"
         >
@@ -385,8 +387,8 @@ function PlaceInput({
             >
               <KindIcon kind="current" />
               <span className="min-w-0">
-                <span className="block text-[11px] text-[var(--alert-green)]">Your location</span>
-                <span className="block text-[10px] text-[var(--text-muted)]">Live position</span>
+                <span className="block text-[11px] text-[var(--alert-green)]">{uiText("Your location")}</span>
+                <span className="block text-[10px] text-[var(--text-muted)]">{uiText("Live position")}</span>
               </span>
             </button>
           )}
@@ -402,7 +404,7 @@ function PlaceInput({
               <KindIcon kind={r.kind} />
               <span className="min-w-0">
                 <span className={`block text-[11px] text-[var(--text-primary)] truncate ${r.kind === 'coordinate' ? 'tabular-nums' : ''}`}>
-                  {r.label}
+                  {uiText(String(r.label))}
                 </span>
                 {r.context && (
                   <span className="block text-[10px] text-[var(--text-muted)] truncate">{r.context}</span>
@@ -417,6 +419,7 @@ function PlaceInput({
 }
 
 export default function DirectionsBar({ onRoute, onLocate, onClose, center = null, onLiveLocation, onActiveSegment, onFollowChange, onStartNavigation }: DirectionsBarProps) {
+  const {t:uiText}=useUILocale();
   const [fromText, setFromText] = useState('');
   const [toText, setToText] = useState('');
   const [from, setFrom] = useState<Place | null>(null);
@@ -636,7 +639,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
           style={{ background: 'var(--gold-primary)', boxShadow: '0 0 8px rgba(var(--gold-rgb),0.6)' }}
         />
         <Route className="w-3.5 h-3.5 text-[var(--gold-primary)]" />
-        <h2 className="instrument-title flex-1">Route</h2>
+        <h2 className="instrument-title flex-1">{uiText("Route")}</h2>
 
         {/* State at a glance: standby until both ends are set, then the leg. */}
         <span
@@ -676,7 +679,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
         {onClose && (
           <button
             onClick={onClose}
-            aria-label="Close directions"
+            aria-label={uiText("Close directions")}
             className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors -mr-1 p-1.5"
           >
             <X className="w-3.5 h-3.5" />
@@ -706,7 +709,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
         <div className="flex-1 min-w-0 flex flex-col divide-y divide-[var(--border-secondary)]">
           <PlaceInput
             value={fromText} onChange={setFromText} onPick={pickFrom}
-            placeholder="Choose starting point" autoFocus
+            placeholder={uiText("Choose starting point")} autoFocus
             biasLat={center?.lat} biasLng={center?.lng}
             onLocate={useMyLocation} locating={locating} liveFix={live}
           />
@@ -730,14 +733,14 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
           ))}
           <PlaceInput
             value={toText} onChange={setToText} onPick={pickTo}
-            placeholder="Choose destination"
+            placeholder={uiText("Choose destination")}
             biasLat={center?.lat} biasLng={center?.lng} liveFix={live}
           />
         </div>
 
         <button
           onClick={swap}
-          aria-label="Swap origin and destination"
+          aria-label={uiText("Swap origin and destination")}
           className="self-center p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--gold-primary)]
                      hover:bg-[rgba(var(--gold-rgb),0.08)] transition-colors flex-shrink-0"
         >
@@ -749,7 +752,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
       <div className="px-3 pb-2.5 flex items-center gap-1.5">
         <div
           role="tablist"
-          aria-label="Travel mode"
+          aria-label={uiText("Travel mode")}
           className="flex-1 flex p-0.5 rounded-lg border border-[var(--border-secondary)] bg-[rgba(0,0,0,0.35)]"
         >
           {MODES.map(({ id, label, Icon }) => {
@@ -768,7 +771,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
                 style={on ? { fontFamily: 'var(--font-hud)' } : undefined}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {label}
+                {uiText(String(label))}
                 {/* A lit underline on the selected mode — the fill alone is
                     subtle enough to miss against a bright basemap. */}
                 {on && (
@@ -785,8 +788,8 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
 
         <button
           onClick={() => setVias((v) => [...v, { place: null, text: '' }])}
-          title="Add a stop"
-          aria-label="Add a stop"
+          title={uiText("Add a stop")}
+          aria-label={uiText("Add a stop")}
           className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--cyan-primary)]
                      hover:bg-[rgba(var(--cyan-rgb),0.08)] transition-colors flex-shrink-0"
         >
@@ -795,8 +798,8 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
         <button
           onClick={() => setShowOptions((o) => !o)}
           aria-pressed={showOptions}
-          title="Route options"
-          aria-label="Route options"
+          title={uiText("Route options")}
+          aria-label={uiText("Route options")}
           className={`p-1.5 rounded-md transition-colors flex-shrink-0 ${
             showOptions || avoid.tolls || avoid.highways || avoid.ferries
               ? 'text-[var(--gold-primary)] bg-[rgba(var(--gold-rgb),0.1)]'
@@ -819,8 +822,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
                   ? 'border-[var(--border-active)] bg-[rgba(var(--gold-rgb),0.12)] text-[var(--gold-primary)]'
                   : 'border-[var(--border-secondary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
               }`}
-            >
-              Avoid {k}
+            >{uiText("Avoid")}{" "}{k}
             </button>
           ))}
         </div>
@@ -850,19 +852,17 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
         {!loading && error && (
           <div className="px-3 py-4 text-center">
             <p className="text-[11px] text-[var(--alert-red)]">{error}</p>
-            <p className="text-[10px] text-[var(--text-muted)] mt-1">
-              Try a different point, or switch travel mode.
-            </p>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">{uiText("Try a different point, or switch travel mode.")}{" "}</p>
           </div>
         )}
 
         {!loading && !error && !route && (
           <div className="px-3 py-4">
             {ready ? (
-              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">Calculating…</p>
+              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">{uiText("Calculating…")}</p>
             ) : (
               <>
-                <p className="hud-label mb-2">Accepted input</p>
+                <p className="hud-label mb-2">{uiText("Accepted input")}</p>
                 {/* Showing the formats beats describing them: the sample is the
                     documentation, and it is scannable at a glance. */}
                 <div className="flex flex-wrap gap-1.5">
@@ -870,9 +870,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
                   <span className="instrument-sample">10 Downing St</span>
                   <span className="instrument-sample">51.5074,-0.1278</span>
                 </div>
-                <p className="mt-2.5 text-[11px] text-[var(--text-muted)] leading-relaxed">
-                  Set a start and a destination to plot a route.
-                </p>
+                <p className="mt-2.5 text-[11px] text-[var(--text-muted)] leading-relaxed">{uiText("Set a start and a destination to plot a route.")}{" "}</p>
               </>
             )}
           </div>
@@ -884,7 +882,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
               <div className="px-3 py-2.5 border-b border-[var(--border-secondary)] bg-[rgba(66,133,244,0.07)]">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Navigation className="w-2.5 h-2.5 text-[#4285F4]" />
-                  <span className="text-[9px] uppercase tracking-[0.15em] text-[#4285F4]">Next turn</span>
+                  <span className="text-[9px] uppercase tracking-[0.15em] text-[#4285F4]">{uiText("Next turn")}</span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <span className="mt-0.5 flex-shrink-0"><StepIcon type={guidance.step.type} /></span>
@@ -907,7 +905,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
                     {formatDuration(route.duration)}
                   </div>
                   {via && (
-                    <div className="text-[10px] text-[var(--text-muted)] truncate mt-1">via {via}</div>
+                    <div className="text-[10px] text-[var(--text-muted)] truncate mt-1">{uiText("via")}{" "}{via}</div>
                   )}
                 </div>
                 <div className="text-right flex-shrink-0">
@@ -923,9 +921,9 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
 
               {(route.hasToll || route.hasHighway || route.hasFerry) && (
                 <div className="flex gap-1.5 mt-2">
-                  {route.hasToll && <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider border border-[var(--border-secondary)] text-[var(--alert-orange)]">Toll</span>}
-                  {route.hasHighway && <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider border border-[var(--border-secondary)] text-[var(--text-muted)]">Motorway</span>}
-                  {route.hasFerry && <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider border border-[var(--border-secondary)] text-[var(--cyan-primary)]">Ferry</span>}
+                  {route.hasToll && <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider border border-[var(--border-secondary)] text-[var(--alert-orange)]">{uiText("Toll")}</span>}
+                  {route.hasHighway && <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider border border-[var(--border-secondary)] text-[var(--text-muted)]">{uiText("Motorway")}</span>}
+                  {route.hasFerry && <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider border border-[var(--border-secondary)] text-[var(--cyan-primary)]">{uiText("Ferry")}</span>}
                 </div>
               )}
 
@@ -933,8 +931,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
                 <div className="mt-2.5">
                   <div className="flex items-center justify-between mb-1">
                     <span className="flex items-center gap-1 text-[9px] uppercase tracking-[0.15em] text-[var(--text-muted)]">
-                      <Mountain className="w-2.5 h-2.5" /> Elevation
-                    </span>
+                      <Mountain className="w-2.5 h-2.5" />{" "}{uiText("Elevation")}{" "}</span>
                     <span className="text-[10px] text-[var(--text-secondary)] tabular-nums">
                       ↑{route.ascent ?? 0} m · ↓{route.descent ?? 0} m
                     </span>
@@ -961,13 +958,11 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
                              text-[#7BAAF7] text-[12px] tracking-wide
                              hover:bg-[rgba(66,133,244,0.24)] transition-colors"
                 >
-                  <Play className="w-3.5 h-3.5" />
-                  Start navigation
-                </button>
+                  <Play className="w-3.5 h-3.5" />{uiText("Start navigation")}{" "}</button>
               )}
 
               {routes.length > 1 && (
-                <div className="flex gap-1 mt-2.5" role="tablist" aria-label="Route options">
+                <div className="flex gap-1 mt-2.5" role="tablist" aria-label={uiText("Route options")}>
                   {routes.map((r, i) => {
                     const on = i === chosen;
                     const slower = Math.round((r.duration - routes[0].duration) / 60);
@@ -1037,8 +1032,7 @@ export default function DirectionsBar({ onRoute, onLocate, onClose, center = nul
               ))}
             </ol>
 
-            <p className="px-3 py-2 text-[9px] text-[var(--text-muted)] tracking-wider uppercase border-t border-[var(--border-secondary)]">
-              Routing via {route.provider} · OpenStreetMap
+            <p className="px-3 py-2 text-[9px] text-[var(--text-muted)] tracking-wider uppercase border-t border-[var(--border-secondary)]">{uiText("Routing via")}{" "}{route.provider} · OpenStreetMap
             </p>
           </>
         )}

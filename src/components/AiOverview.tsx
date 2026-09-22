@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,6 +55,7 @@ function LeanBar({ blocs }: { blocs: AlertThread['blocs'] }) {
 function ThreadRow({ thread, active, accent, onSelect }: {
   thread: AlertThread; active: boolean; accent: string; onSelect?: (id: string | null) => void;
 }) {
+  const {t:uiText}=useUILocale();
   const p = PERSPECTIVE[thread.perspective];
   const blocSummary = BLOC_ORDER.filter(b => thread.blocs[b]).map(b => `${BLOCS[b].label}: ${thread.blocs[b]}`).join(' · ');
   return (
@@ -70,16 +72,16 @@ function ThreadRow({ thread, active, accent, onSelect }: {
       title={onSelect ? (active ? 'Show all alerts' : 'Show only this thread') : undefined}
     >
       <div className="flex items-center gap-1.5">
-        <span className="flex-1 min-w-0 truncate text-[11px] font-semibold text-[var(--text-primary)]">{thread.label}</span>
+        <span className="flex-1 min-w-0 truncate text-[11px] font-semibold text-[var(--text-primary)]">{uiText(String(thread.label))}</span>
         <span className="text-[8.5px] font-mono tracking-wider px-1 rounded" style={{ color: p.color, background: `${p.color}14` }} title={p.title}>
-          {p.label}
+          {uiText(String(p.label))}
         </span>
         <span className="text-[11px] font-mono font-bold tabular-nums" style={{ color: accent }}>{thread.count}</span>
       </div>
       <div className="mt-1" title={blocSummary}><LeanBar blocs={thread.blocs} /></div>
       <div className="mt-1 flex items-center gap-1.5 text-[9px] font-mono text-[var(--text-muted)]">
-        <span className="truncate">{thread.sources.length} ch{thread.topics.length ? ` · ${thread.topics.join(' · ')}` : ''}</span>
-        {thread.breaking > 0 && <span className="text-[#FF5A5A] flex-shrink-0">· {thread.breaking} BREAKING</span>}
+        <span className="truncate">{thread.sources.length}{" "}{uiText("ch")}{thread.topics.length ? ` · ${thread.topics.join(' · ')}` : ''}</span>
+        {thread.breaking > 0 && <span className="text-[#FF5A5A] flex-shrink-0">· {thread.breaking}{" "}{uiText("BREAKING")}</span>}
         {thread.latest && <span className="ml-auto flex-shrink-0">{timeAgo(thread.latest)}</span>}
       </div>
       {thread.lead && (
@@ -95,6 +97,7 @@ function AlertsBrief({ result, accent, activeThreadId, onThreadSelect }: {
   result: OverviewResult & { brief: AlertBrief }; accent: string;
   activeThreadId?: string | null; onThreadSelect?: (id: string | null) => void;
 }) {
+  const {t:uiText}=useUILocale();
   const { brief } = result;
   const prose = result.generatedBy === 'gemini' ? result.overview : brief.bottomLine;
   const quake = brief.seismic?.strongest;
@@ -105,7 +108,7 @@ function AlertsBrief({ result, accent, activeThreadId, onThreadSelect }: {
       {brief.threads.length > 0 && (
         <div className="mt-2.5">
           <div className="mb-1 flex items-center gap-1 text-[8.5px] font-mono tracking-widest text-[var(--text-muted)]">
-            <Activity className="w-2.5 h-2.5" /> THREADS{onThreadSelect ? ' · TAP TO FILTER' : ''}
+            <Activity className="w-2.5 h-2.5" />{" "}{uiText("THREADS")}{onThreadSelect ? ' · TAP TO FILTER' : ''}
           </div>
           <div className="space-y-1">
             {brief.threads.map(t => (
@@ -118,21 +121,20 @@ function AlertsBrief({ result, accent, activeThreadId, onThreadSelect }: {
       {quake && (
         <div className="mt-2 flex items-center gap-2 rounded-md border border-white/5 bg-white/[0.02] px-2 py-1.5 text-[10px]">
           <CircleDot className="w-3 h-3 flex-shrink-0" style={{ color: quake.magnitude >= 6 ? '#FF3D3D' : quake.magnitude >= 5 ? '#FF9500' : '#FFD700' }} />
-          <span className="flex-1 min-w-0 truncate text-[var(--text-secondary)]">
-            Strongest quake <b className="text-[var(--text-primary)]">M{quake.magnitude.toFixed(1)}</b> {quake.place}
+          <span className="flex-1 min-w-0 truncate text-[var(--text-secondary)]">{uiText("Strongest quake")}{" "}<b className="text-[var(--text-primary)]">M{quake.magnitude.toFixed(1)}</b> {quake.place}
           </span>
-          {quake.tsunami && <span className="text-[8.5px] font-mono text-[#448AFF]">TSUNAMI FLAG</span>}
-          <span className="font-mono text-[9px] text-[var(--text-muted)] flex-shrink-0">{brief.seismic!.count} total</span>
+          {quake.tsunami && <span className="text-[8.5px] font-mono text-[#448AFF]">{uiText("TSUNAMI FLAG")}</span>}
+          <span className="font-mono text-[9px] text-[var(--text-muted)] flex-shrink-0">{brief.seismic!.count}{" "}{uiText("total")}</span>
         </div>
       )}
 
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[8.5px] font-mono text-[var(--text-muted)]">
-        <span>{brief.coverage.reports} REPORTS</span>
-        <span>· {brief.coverage.channels} CHANNELS</span>
+        <span>{brief.coverage.reports}{" "}{uiText("REPORTS")}</span>
+        <span>· {brief.coverage.channels}{" "}{uiText("CHANNELS")}</span>
         {brief.coverage.corroborated > 0 && (
-          <span className="inline-flex items-center gap-0.5"><ArrowLeftRight className="w-2 h-2" /> {brief.coverage.corroborated} CROSS-POSTED</span>
+          <span className="inline-flex items-center gap-0.5"><ArrowLeftRight className="w-2 h-2" /> {brief.coverage.corroborated}{" "}{uiText("CROSS-POSTED")}</span>
         )}
-        {brief.coverage.newest && <span>· NEWEST {timeAgo(brief.coverage.newest).toUpperCase()}</span>}
+        {brief.coverage.newest && <span>{uiText("· NEWEST")}{" "}{timeAgo(brief.coverage.newest).toUpperCase()}</span>}
       </div>
       <div className="mt-1 text-[8.5px] leading-snug text-[var(--text-muted)]">
         {result.generatedBy === 'gemini'
@@ -147,6 +149,7 @@ function AlertsBrief({ result, accent, activeThreadId, onThreadSelect }: {
 export default function AiOverview({
   mode, payload, accent = '#7C4DFF', signature, activeThreadId, onThreadSelect, onOpenChange,
 }: AiOverviewProps) {
+  const {t:uiText}=useUILocale();
   const [open, setOpenState] = useState(false);
   const setOpen = useCallback((next: boolean) => {
     setOpenState(next);
@@ -199,8 +202,8 @@ export default function AiOverview({
         }}
       >
         {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-        {loading ? 'ANALYZING…' : open ? 'HIDE AI OVERVIEW' : 'AI OVERVIEW'}
-        {stale && !loading && <span className="ml-1 w-1.5 h-1.5 rounded-full animate-osiris-pulse" style={{ background: accent }} title="The feed has changed since this read-out" />}
+        {loading ? 'ANALYZING…' : open ? 'HIDE AI OVERVIEW' : uiText("AI OVERVIEW")}
+        {stale && !loading && <span className="ml-1 w-1.5 h-1.5 rounded-full animate-osiris-pulse" style={{ background: accent }} title={uiText("The feed has changed since this read-out")} />}
       </button>
 
       <AnimatePresence initial={false}>
@@ -223,10 +226,10 @@ export default function AiOverview({
                   {result && <span className="text-[var(--text-muted)]"> · {timeAgo(result.generatedAt).toUpperCase()}</span>}
                 </span>
                 <div className="flex items-center gap-2">
-                  <button onClick={generate} disabled={loading} className="hover:opacity-70 transition-opacity" title="Regenerate" aria-label="Regenerate overview">
+                  <button onClick={generate} disabled={loading} className="hover:opacity-70 transition-opacity" title={uiText("Regenerate")} aria-label={uiText("Regenerate overview")}>
                     <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} style={{ color: accent }} />
                   </button>
-                  <button onClick={() => setOpen(false)} className="hover:opacity-70 transition-opacity" title="Close" aria-label="Close overview">
+                  <button onClick={() => setOpen(false)} className="hover:opacity-70 transition-opacity" title={uiText("Close")} aria-label={uiText("Close overview")}>
                     <X className="w-3 h-3 text-[var(--text-muted)]" />
                   </button>
                 </div>
@@ -237,15 +240,12 @@ export default function AiOverview({
                   onClick={generate}
                   className="mb-2 w-full rounded border px-2 py-1 text-left text-[9.5px] font-mono tracking-wide transition-colors hover:bg-white/5"
                   style={{ borderColor: `${accent}44`, color: accent }}
-                >
-                  FEED UPDATED SINCE THIS READ-OUT — REGENERATE
-                </button>
+                >{uiText("FEED UPDATED SINCE THIS READ-OUT — REGENERATE")}{" "}</button>
               )}
 
               {loading && !result && (
                 <div className="flex items-center gap-2 py-2 text-[var(--text-muted)]">
-                  <Loader2 className="w-3 h-3 animate-spin" /> Reading the feed…
-                </div>
+                  <Loader2 className="w-3 h-3 animate-spin" />{" "}{uiText("Reading the feed…")}{" "}</div>
               )}
 
               {error && <div className="text-[var(--alert-red)] py-1">⚠ {error}</div>}

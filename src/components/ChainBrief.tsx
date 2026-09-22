@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useState, useCallback, useEffect, useRef, memo } from 'react';
 import { Loader2, Sparkles, Bug, Flame, ShieldAlert, ExternalLink } from 'lucide-react';
@@ -39,6 +40,7 @@ function Head({ title, icon: Icon, color, right }: { title: string; icon: any; c
 }
 
 function ChainBriefInner() {
+  const {t:uiText}=useUILocale();
   const [brief, setBrief] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -102,7 +104,7 @@ function ChainBriefInner() {
     <div>
       {/* window selector */}
       <div className="flex items-center gap-1 mb-2">
-        <span className="text-[10px] font-mono text-[var(--text-muted)] mr-1">WINDOW</span>
+        <span className="text-[10px] font-mono text-[var(--text-muted)] mr-1">{uiText("WINDOW")}</span>
         {[7, 30, 90].map(d => (
           <button
             key={d}
@@ -114,13 +116,13 @@ function ChainBriefInner() {
               border: `1px solid ${days === d ? `${ACCENT}55` : 'rgba(255,255,255,0.1)'}`,
             }}
           >
-            {d}D
+            {uiText(String(d))}D
           </button>
         ))}
         <button
           onClick={() => load(days, true)}
           className="ml-auto text-[9px] font-mono text-[var(--text-muted)] hover:text-white/70 transition-colors"
-          title="Refresh now"
+          title={uiText("Refresh now")}
         >
           {lastRefresh ? lastRefresh.toLocaleTimeString() : 'refresh'}
         </button>
@@ -129,7 +131,7 @@ function ChainBriefInner() {
       {loading && !brief && (
         <div className="flex items-center gap-2 py-6 justify-center">
           <Loader2 className="w-4 h-4 animate-spin" style={{ color: ACCENT }} />
-          <span className="text-[11px] font-mono text-[var(--text-muted)]">Building brief…</span>
+          <span className="text-[11px] font-mono text-[var(--text-muted)]">{uiText("Building brief…")}</span>
         </div>
       )}
       {error && <div className="text-[11px] font-mono text-red-400 py-2">{error}</div>}
@@ -143,7 +145,7 @@ function ChainBriefInner() {
               { label: 'CVES', value: t?.cve_count ?? 0, color: '#E040FB' },
             ].map(c => (
               <div key={c.label} className="rounded border px-2 py-1.5" style={{ borderColor: `${c.color}33`, background: `${c.color}0d` }}>
-                <div className="text-[9px] font-mono text-[var(--text-muted)]">{c.label}</div>
+                <div className="text-[9px] font-mono text-[var(--text-muted)]">{uiText(String(c.label))}</div>
                 <div className="text-[11px] font-mono font-bold" style={{ color: c.color }}>{c.value}</div>
               </div>
             ))}
@@ -155,9 +157,7 @@ function ChainBriefInner() {
             className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[10px] font-mono font-bold tracking-wider transition-colors disabled:opacity-50"
             style={{ color: ACCENT, background: `${ACCENT}14`, border: `1px solid ${ACCENT}44` }}
           >
-            {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-            AI OVERVIEW
-          </button>
+            {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}{uiText("AI OVERVIEW")}{" "}</button>
           {ai && (
             <div className="mt-1.5 px-2 py-1.5 rounded border text-[11px] font-mono leading-relaxed whitespace-pre-wrap"
               style={{ borderColor: `${ACCENT}33`, background: `${ACCENT}0a`, color: 'var(--text-secondary)' }}>
@@ -165,9 +165,9 @@ function ChainBriefInner() {
             </div>
           )}
 
-          <Head title="ON-CHAIN EXPLOITS" icon={Flame} color="#FF3D3D" right={`${brief.exploits.length} shown`} />
+          <Head title={uiText("ON-CHAIN EXPLOITS")} icon={Flame} color="#FF3D3D" right={`${brief.exploits.length} shown`} />
           {brief.exploits.length === 0 && (
-            <div className="text-[10px] font-mono text-[var(--text-muted)] py-1">None in window.</div>
+            <div className="text-[10px] font-mono text-[var(--text-muted)] py-1">{uiText("None in window.")}</div>
           )}
           {brief.exploits.slice(0, 12).map((e: any, i: number) => (
             <div key={i} className="py-1.5 border-b border-[var(--border-secondary)]/20 last:border-0">
@@ -178,15 +178,15 @@ function ChainBriefInner() {
               <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
                 <span>{String(e.date).slice(0, 10)}</span>
                 <span className="text-[var(--text-secondary)]">{e.chain}</span>
-                {e.bridge_hack && <span className="text-[#E040FB]">BRIDGE</span>}
+                {e.bridge_hack && <span className="text-[#E040FB]">{uiText("BRIDGE")}</span>}
               </div>
               <div className="text-[10px] font-mono text-[var(--text-secondary)] leading-snug">{e.technique}</div>
             </div>
           ))}
 
-          <Head title="CRYPTO CVES" icon={Bug} color="#E040FB" right={`${brief.cves.length} shown`} />
+          <Head title={uiText("CRYPTO CVES")} icon={Bug} color="#E040FB" right={`${brief.cves.length} shown`} />
           {brief.cves.length === 0 && (
-            <div className="text-[10px] font-mono text-[var(--text-muted)] py-1">None published in window.</div>
+            <div className="text-[10px] font-mono text-[var(--text-muted)] py-1">{uiText("None published in window.")}</div>
           )}
           {brief.cves.slice(0, 10).map((c: any, i: number) => {
             const col = SEV_COLOR[String(c.severity || '').toLowerCase()] || '#9B978E';
@@ -207,7 +207,7 @@ function ChainBriefInner() {
             );
           })}
 
-          <Head title="OFAC DESIGNATED WALLETS" icon={ShieldAlert} color="#FFD700" right={`${t?.sanctioned_wallet_count ?? 0} total`} />
+          <Head title={uiText("OFAC DESIGNATED WALLETS")} icon={ShieldAlert} color="#FFD700" right={`${t?.sanctioned_wallet_count ?? 0} total`} />
           {brief.sanctioned_wallets.slice(0, 10).map((w: any, i: number) => (
             <div key={i} className="flex items-center gap-2 py-1 text-[10px] font-mono">
               <span className="w-[34px] font-bold text-[#FFD700]">{w.asset}</span>
@@ -218,16 +218,14 @@ function ChainBriefInner() {
 
           {brief.degraded?.length > 0 && (
             <div className="mt-3 px-2 py-1.5 rounded border border-white/10 bg-white/[0.03]">
-              <span className="text-[10px] font-mono text-[var(--text-muted)] block mb-0.5">DEGRADED SOURCES</span>
+              <span className="text-[10px] font-mono text-[var(--text-muted)] block mb-0.5">{uiText("DEGRADED SOURCES")}</span>
               {brief.degraded.map((d: string, i: number) => (
-                <div key={i} className="text-[10px] font-mono text-[var(--text-secondary)] leading-snug">↳ {d}</div>
+                <div key={i} className="text-[10px] font-mono text-[var(--text-secondary)] leading-snug">↳ {uiText(String(d))}</div>
               ))}
             </div>
           )}
 
-          <div className="mt-2 text-[9px] font-mono text-[var(--text-muted)]">
-            Sources: {(brief.sources || []).join(' · ')} · auto-refresh 15m
-          </div>
+          <div className="mt-2 text-[9px] font-mono text-[var(--text-muted)]">{uiText("Sources:")}{" "}{(brief.sources || []).join(' · ')}{" "}{uiText("· auto-refresh 15m")}{" "}</div>
         </>
       )}
     </div>

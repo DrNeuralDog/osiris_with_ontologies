@@ -1,4 +1,5 @@
 'use client';
+import {useLocale as useUILocale} from '@/lib/i18n';
 
 import { useMemo } from 'react';
 
@@ -38,6 +39,7 @@ export function scaleFor(zoom: number, latitude: number): { barWidth: number; la
 }
 
 export default function ScaleBar({ zoom, latitude }: ScaleBarProps) {
+  const {t:uiText}=useUILocale();
   const scaleInfo = useMemo(() => scaleFor(zoom, latitude), [zoom, latitude]);
 
   return (
@@ -53,7 +55,7 @@ export default function ScaleBar({ zoom, latitude }: ScaleBarProps) {
         </div>
       </div>
       <span className="text-[9px] font-mono text-[var(--text-muted)] tracking-widest opacity-70 leading-none">
-        {scaleInfo.label}
+        {uiText(String(scaleInfo.label))}
       </span>
     </div>
   );

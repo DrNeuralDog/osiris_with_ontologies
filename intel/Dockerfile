@@ -6,6 +6,7 @@ COPY server.js ./
 COPY resolvers.js ./
 COPY ontology ./ontology
 COPY intelligence ./intelligence
+COPY investigations ./investigations
 USER node
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s CMD wget -qO- http://localhost:4000/health || exit 1

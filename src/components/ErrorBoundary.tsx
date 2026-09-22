@@ -1,4 +1,5 @@
 'use client';
+import {t as uiText} from '@/lib/i18n';
 
 import React from 'react';
 
@@ -32,17 +33,14 @@ export default class ErrorBoundary extends React.Component<Props, State> {
         <div className="flex items-center justify-center w-full h-full bg-[var(--bg-secondary)] rounded-lg border border-red-900/30 p-4">
           <div className="text-center">
             <div className="text-xs font-mono text-red-400 tracking-widest mb-2">
-              ⚠ {this.props.name?.toUpperCase() || 'COMPONENT'} ERROR
-            </div>
+              ⚠ {this.props.name?.toUpperCase() || 'COMPONENT'}{" "}{uiText("ERROR")}{" "}</div>
             <div className="text-[11px] font-mono text-[var(--text-muted)] max-w-[300px] truncate">
               {this.state.error?.message}
             </div>
             <button
               onClick={() => this.setState({ hasError: false })}
               className="mt-3 px-3 py-1 text-[10px] font-mono tracking-widest text-[var(--gold-primary)] border border-[var(--border-primary)] rounded hover:bg-[var(--hover-accent)] transition-colors"
-            >
-              RETRY
-            </button>
+            >{uiText("RETRY")}{" "}</button>
           </div>
         </div>
       );
